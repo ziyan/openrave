@@ -52,7 +52,7 @@ if( Boost_PYTHON_FOUND AND Boost_THREAD_FOUND )
       target_link_libraries(openravepy_pybind11_int PUBLIC ${STDC_LIBRARY} libopenrave libopenrave-core ${PYTHON_LIBRARIES} ${Boost_PYTHON_LIBRARY} ${Boost_THREAD_LIBRARY} ${extralibs}
                                            PRIVATE boost_assertion_failed)
       add_dependencies(openravepy_pybind11_int libopenrave libopenrave-core)
-      set_target_properties(openravepy_int PROPERTIES PREFIX "" COMPILE_FLAGS "${OPENRAVEPY_COMPILE_FLAGS}")
+      set_target_properties(openravepy_int PROPERTIES PREFIX "" COMPILE_FLAGS "${OPENRAVEPY_COMPILE_FLAGS} -fvisibility=hidden")
       if( WIN32 )
         set_target_properties(openravepy_pybind11_int PROPERTIES SUFFIX ".pyd")
       elseif( APPLE OR ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
