@@ -85,11 +85,11 @@ inline T extract(object o) {
 }
 template <typename T>
 inline object to_object(const T& t) {
-    return ::pybind11::cast<t>();
+    return ::pybind11::cast(t);
 }
 inline object to_array(PyObject* pyo) {
     // do we need to implement the conversion?
-    return cast(pyo);
+    return cast/*<numeric::array>*/(pyo);
 }
 inline object empty_array() {
     return numeric::array({1, 0}, nullptr);
@@ -118,10 +118,10 @@ template <typename T>
 inline object to_object(const T& t) {
     return object(t);
 }
-inline object to_array(PyObject* pyo) {
+inline boost::python::numeric::array to_array(PyObject* pyo) {
     return static_cast<boost::python::numeric::array>(boost::python::handle<>(pyo));
 }
-inline object empty_array() {
+inline boost::python::numeric::array empty_array() {
     return static_cast<boost::python::numeric::array>(boost::python::handle<>());
 }
 template <typename T>
