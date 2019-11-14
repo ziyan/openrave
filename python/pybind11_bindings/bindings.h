@@ -520,34 +520,34 @@ template <typename T>
 inline py::numeric::array toPyArrayN(const T* pvalues, const size_t N)
 {
     if( N == 0 ) {
-        return static_cast<py::numeric::array>(py::numeric::array(py::list()).astype(select_dtype<T>::type));
+        return py::empty_array();
     }
     npy_intp dims[] = { npy_intp(N) };
     PyObject *pyvalues = PyArray_SimpleNew(1, dims, select_npy_type<T>::type);
     if( pvalues != nullptr ) {
         memcpy(PyArray_DATA(pyvalues), pvalues, N * sizeof(T));
     }
-    return static_cast<py::numeric::array>(py::handle<>(pyvalues));
+    return py::to_array(pyvalues);
 }
 
 template <typename T>
 inline py::numeric::array toPyArrayN(const T* pvalues, std::vector<npy_intp>& dims)
 {
     if( dims.empty() ) {
-        return static_cast<py::numeric::array>(py::numeric::array(py::list()).astype(select_dtype<T>::type));
+        return py::empty_array();
     }
     size_t numel = 1;
     for(npy_intp dim : dims) {
         numel *= dim;
     }
     if( numel == 0 ) {
-        return static_cast<py::numeric::array>(py::numeric::array(py::list()).astype(select_dtype<T>::type));
+        return py::empty_array();
     }
     PyObject *pyvalues = PyArray_SimpleNew(dims.size(), dims.data(), select_npy_type<T>::type);
     if( pvalues != nullptr ) {
         memcpy(PyArray_DATA(pyvalues), pvalues, numel * sizeof(T));
     }
-    return static_cast<py::numeric::array>(py::handle<>(pyvalues));
+    return py::to_array(pyvalues);
 }
 #endif // USE_PYBIND11_PYTHON_BINDINGS
 
@@ -555,7 +555,7 @@ template <typename T>
 inline py::object toPyList(const std::vector<T>& v)
 {
     py::list lvalues;
-    FOREACHC(it,v) {
+    FOREACHC(it, v) {
         lvalues.append(object(*it));
     }
     return std::move(lvalues);

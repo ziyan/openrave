@@ -156,7 +156,7 @@ protected:
     object _ReturnSamples2D(const std::vector<dReal>&samples)
     {
         if( samples.size() == 0 ) {
-            return static_cast<numeric::array>(numeric::array(py::list()).astype("f8"));
+            return py::empty_array();
         }
         int dim = _pspacesampler->GetNumberOfValues();
         npy_intp dims[] = { npy_intp(samples.size()/dim), npy_intp(dim) };
@@ -168,7 +168,7 @@ protected:
     object _ReturnSamples2D(const std::vector<uint32_t>&samples)
     {
         if( samples.size() == 0 ) {
-            return static_cast<numeric::array>(numeric::array(py::list()).astype("u4"));
+            return py::empty_array();
         }
         int dim = _pspacesampler->GetNumberOfValues();
         npy_intp dims[] = { npy_intp(samples.size()/dim), npy_intp(dim) };
