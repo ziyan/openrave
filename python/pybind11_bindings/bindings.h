@@ -89,7 +89,7 @@ inline object to_object(const T& t) {
 }
 inline object to_array(PyObject* pyo) {
     // do we need to implement the conversion?
-    return cast(pyo);
+    return cast/*<numeric::array>*/(pyo);
 }
 inline object empty_array() {
     return numeric::array({1, 0}, nullptr);
@@ -527,7 +527,7 @@ inline py::numeric::array toPyArrayN(const T* pvalues, const size_t N)
     if( pvalues != nullptr ) {
         memcpy(PyArray_DATA(pyvalues), pvalues, N * sizeof(T));
     }
-    return static_cast<py::numeric::array>(py::handle<>(pyvalues));
+    return py::to_array(pyvalues);
 }
 
 template <typename T>
@@ -547,7 +547,7 @@ inline py::numeric::array toPyArrayN(const T* pvalues, std::vector<npy_intp>& di
     if( pvalues != nullptr ) {
         memcpy(PyArray_DATA(pyvalues), pvalues, numel * sizeof(T));
     }
-    return static_cast<py::numeric::array>(py::handle<>(pyvalues));
+    return py::to_array(pyvalues);
 }
 #endif // USE_PYBIND11_PYTHON_BINDINGS
 
@@ -555,7 +555,7 @@ template <typename T>
 inline py::object toPyList(const std::vector<T>& v)
 {
     py::list lvalues;
-    FOREACHC(it,v) {
+    FOREACHC(it, v) {
         lvalues.append(object(*it));
     }
     return std::move(lvalues);

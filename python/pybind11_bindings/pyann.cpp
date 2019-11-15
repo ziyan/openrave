@@ -171,7 +171,7 @@ object search_array(ANNkd_tree& kdtree, object qarray, int k, double eps, bool p
     BOOST_ASSERT(k <= kdtree.nPoints());
     int N = len(qarray);
     if( N == 0 )
-        return py::make_tuple(numeric::array(py::list()).astype("i4"),numeric::array(py::list()));
+        return py::make_tuple(numeric::array(py::list()).astype("i4"), py::empty_array());
 
     BOOST_ASSERT(len(qarray[0])==kdtree.theDim());
     ANNpointManaged annq(kdtree.theDim());
@@ -213,7 +213,7 @@ object k_fixed_radius_search(ANNkd_tree& kdtree, object q, double sqRad, int k, 
 
     if( k <= 0 ) {
         int kball = kdtree.annkFRSearch(annq.pt, sqRad, k, NULL, NULL, eps);
-        return py::make_tuple(numeric::array(py::list()).astype("i4"),numeric::array(py::list()),kball);
+        return py::make_tuple(numeric::array(py::list()).astype("i4"), py::empty_array(), kball);
     }
 
     std::vector<ANNdist> dists(k);
@@ -249,7 +249,7 @@ object k_fixed_radius_search_array(ANNkd_tree& kdtree, object qarray, double sqR
     BOOST_ASSERT(k <= kdtree.nPoints());
     int N = len(qarray);
     if( N == 0 )
-        return py::make_tuple(numeric::array(py::list()).astype("i4"),numeric::array(py::list()),numeric::array(py::list()));
+        return py::make_tuple(numeric::array(py::list()).astype("i4"), py::empty_array(), py::empty_array());
 
     BOOST_ASSERT(len(qarray[0])==kdtree.theDim());
     ANNpointManaged annq(kdtree.theDim());
@@ -265,7 +265,7 @@ object k_fixed_radius_search_array(ANNkd_tree& kdtree, object qarray, double sqR
                 annq.pt[c] = extract<ANNcoord>(q[c]);
             pkball[i] = kdtree.annkFRSearch(annq.pt, sqRad, k, NULL, NULL, eps);
         }
-        return py::make_tuple(numeric::array(py::list()).astype("i4"),numeric::array(py::list()),py::to_array(pykball));
+        return py::make_tuple(numeric::array(py::list()).astype("i4"), py::empty_array(), py::to_array(pykball));
     }
 
     npy_intp dims[] = { N,k};
