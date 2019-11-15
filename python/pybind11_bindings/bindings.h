@@ -68,81 +68,6 @@
 #include <algorithm>
 #include <openrave/smart_ptr.h>
 
-// pybind11
-// #define USE_PYBIND11_PYTHON_BINDINGS
-#ifdef USE_PYBIND11_PYTHON_BINDINGS
-#include <pybind11/pybind11.h>
-#include <pybind11/numpy.h>
-#include <boost/shared_ptr.hpp>
-PYBIND11_DECLARE_HOLDER_TYPE(T, OPENRAVE_SHARED_PTR<T>);
-namespace pybind11 {
-namespace numeric {
-// so py::numeric::array = py::array_t<double>
-using array = ::pybind11::array_t<double>;
-} // namespace pybind11::numeric
-template <typename T>
-inline T extract(object o) {
-    return o.cast<T>();
-}
-template <typename T>
-inline object to_object(const T& t) {
-    return ::pybind11::cast(t);
-}
-inline object to_array(PyObject* pyo) {
-    // do we need to implement the conversion?
-    return cast/*<numeric::array>*/(pyo);
-}
-inline object empty_array() {
-    return numeric::array({1, 0}, nullptr);
-}
-template <typename T>
-struct extract_ {
-    explicit extract_(const T& o) {
-        try {
-            _data = extract<T>(o);
-        }
-        catch(...) {
-            throw std::runtime_error("Cannot cast " + std::string(typeid(T).name()));
-        }
-    }
-    operator T() && { return std::move(_data); }
-    T _data;
-};
-} // namespace pybind11
-#define OPENRAVE_PYTHON_MODULE(X) PYBIND11_MODULE(X, m)
-#include "map.h"
-#define PY_ARG_(x) py ::arg(x),
-#define PY_ARGS(...) MAP(PY_ARG_, __VA_ARGS__)
-#else // USE_PYBIND11_PYTHON_BINDINGS
-#include <boost/python.hpp> // already has #include <boost/shared_ptr.hpp>
-#define OPENRAVE_PYTHON_MODULE(X) BOOST_PYTHON_MODULE(X)
-// might need a space before "::"?
-#define PY_ARGS(...) py::args(__VA_ARGS__),
-namespace boost {
-namespace python {
-template <typename T>
-inline object to_object(const T& t) {
-    return object(t);
-}
-inline boost::python::numeric::array to_array(PyObject* pyo) {
-    return static_cast<boost::python::numeric::array>(boost::python::handle<>(pyo));
-}
-inline boost::python::numeric::array empty_array() {
-    return static_cast<boost::python::numeric::array>(boost::python::handle<>());
-}
-template <typename T>
-using extract_ = extract<T>;
-} // namespace boost::python
-} // namespace boost
-#endif // USE_PYBIND11_PYTHON_BINDINGS
-
-// is_none is not supported by older versions of python
-#if BOOST_VERSION >= 104300
-#define IS_PYTHONOBJECT_NONE(o) (o).is_none()
-#else
-#define IS_PYTHONOBJECT_NONE(o) (!!(o))
-#endif
-
 namespace openravepy {
 
 // https://stackoverflow.com/questions/35041268/how-to-convert-a-vector-to-numpy-array-with-templates-and-boost
@@ -225,6 +150,88 @@ struct select_npy_type<uint32_t>
 {
     static constexpr NPY_TYPES type = NPY_UINT32;
 };
+} // namespace openravepy
+
+// pybind11
+// #define USE_PYBIND11_PYTHON_BINDINGS
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+#include <pybind11/pybind11.h>
+#include <pybind11/numpy.h>
+#include <boost/shared_ptr.hpp>
+PYBIND11_DECLARE_HOLDER_TYPE(T, OPENRAVE_SHARED_PTR<T>);
+namespace pybind11 {
+namespace numeric {
+// so py::numeric::array = py::array_t<double>
+using array = ::pybind11::array_t<double>;
+} // namespace pybind11::numeric
+template <typename T>
+inline T extract(object o) {
+    return o.cast<T>();
+}
+template <typename T>
+inline object to_object(const T& t) {
+    return ::pybind11::cast(t);
+}
+inline object to_array(PyObject* pyo) {
+    // do we need to implement the conversion?
+    return cast/*<numeric::array>*/(pyo);
+}
+inline object empty_array() {
+    return numeric::array({1, 0}, nullptr);
+}
+template <typename T>
+struct extract_ {
+    explicit extract_(const T& o) {
+        try {
+            _data = extract<T>(o);
+        }
+        catch(...) {
+            throw std::runtime_error("Cannot cast " + std::string(typeid(T).name()));
+        }
+    }
+    operator T() && { return std::move(_data); }
+    T _data;
+};
+} // namespace pybind11
+#define OPENRAVE_PYTHON_MODULE(X) PYBIND11_MODULE(X, m)
+#include "map.h"
+#define PY_ARG_(x) py ::arg(x),
+#define PY_ARGS(...) MAP(PY_ARG_, __VA_ARGS__)
+#else // USE_PYBIND11_PYTHON_BINDINGS
+#include <boost/python.hpp> // already has #include <boost/shared_ptr.hpp>
+#define OPENRAVE_PYTHON_MODULE(X) BOOST_PYTHON_MODULE(X)
+// might need a space before "::"?
+#define PY_ARGS(...) py::args(__VA_ARGS__),
+namespace boost {
+namespace python {
+template <typename T>
+inline object to_object(const T& t) {
+    return object(t);
+}
+inline numeric::array to_array(PyObject* pyo) {
+    return static_cast<numeric::array>(handle<>(pyo));
+}
+inline numeric::array empty_array() {
+    return static_cast<numeric::array>(handle<>());
+}
+template<typename T>
+inline numeric::array empty_array_type() {
+    return static_cast<numeric::array>(numeric::array(list()).astype(openravepy::select_dtype<T>::type));
+}
+template <typename T>
+using extract_ = extract<T>;
+} // namespace boost::python
+} // namespace boost
+#endif // USE_PYBIND11_PYTHON_BINDINGS
+
+// is_none is not supported by older versions of python
+#if BOOST_VERSION >= 104300
+#define IS_PYTHONOBJECT_NONE(o) (o).is_none()
+#else
+#define IS_PYTHONOBJECT_NONE(o) (!!(o))
+#endif
+
+namespace openravepy {
 
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
 namespace py = pybind11;
@@ -526,7 +533,7 @@ template <typename T>
 inline py::numeric::array toPyArrayN(const T* pvalues, const size_t N)
 {
     if( N == 0 ) {
-        return static_cast<py::numeric::array>(py::numeric::array(py::list()).astype(select_dtype<T>::type));
+        return py::empty_array_type<T>();
     }
     npy_intp dims[] = { npy_intp(N) };
     PyObject *pyvalues = PyArray_SimpleNew(1, dims, select_npy_type<T>::type);
@@ -540,14 +547,14 @@ template <typename T>
 inline py::numeric::array toPyArrayN(const T* pvalues, std::vector<npy_intp>& dims)
 {
     if( dims.empty() ) {
-        return static_cast<py::numeric::array>(py::numeric::array(py::list()).astype(select_dtype<T>::type));
+        return py::empty_array_type<T>();
     }
     size_t numel = 1;
     for(npy_intp dim : dims) {
         numel *= dim;
     }
     if( numel == 0 ) {
-        return static_cast<py::numeric::array>(py::numeric::array(py::list()).astype(select_dtype<T>::type));
+        return py::empty_array_type<T>();
     }
     PyObject *pyvalues = PyArray_SimpleNew(dims.size(), dims.data(), select_npy_type<T>::type);
     if( pvalues != nullptr ) {
