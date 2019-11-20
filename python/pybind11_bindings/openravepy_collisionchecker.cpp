@@ -21,6 +21,7 @@ namespace openravepy {
 
 using py::object;
 using py::extract;
+using py::extract_;
 using py::handle;
 using py::dict;
 using py::enum_;
@@ -529,7 +530,7 @@ public:
         object shape = rays.attr("shape");
         int num = extract<int>(shape[0]);
         if( num == 0 ) {
-            return py::make_tuple(py::empty_array_type<int>(), py::empty_array());
+            return py::make_tuple(py::empty_array_astype<int>(), py::empty_array());
         }
         if( extract<int>(shape[1]) != 6 ) {
             throw openrave_exception(_("rays object needs to be a Nx6 vector\n"));
@@ -654,7 +655,7 @@ CollisionReportPtr GetCollisionReport(object o)
     if( IS_PYTHONOBJECT_NONE(o) ) {
         return CollisionReportPtr();
     }
-    extract<PyCollisionReportPtr> pyreport(o);
+    extract_<PyCollisionReportPtr> pyreport(o);
     if( pyreport.check() ) {
         return ((PyCollisionReportPtr)pyreport)->report;
     }
@@ -685,7 +686,7 @@ void UpdateCollisionReport(PyCollisionReportPtr p, PyEnvironmentBasePtr pyenv)
 
 void UpdateCollisionReport(object o, PyEnvironmentBasePtr pyenv)
 {
-    extract<PyCollisionReportPtr> pyreport(o);
+    extract_<PyCollisionReportPtr> pyreport(o);
     if( pyreport.check() ) {
         return UpdateCollisionReport((PyCollisionReportPtr)pyreport,pyenv);
     }

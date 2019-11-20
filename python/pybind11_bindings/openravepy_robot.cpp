@@ -21,6 +21,7 @@ namespace openravepy {
 
 using py::object;
 using py::extract;
+using py::extract_;
 using py::handle;
 using py::dict;
 using py::enum_;
@@ -1595,6 +1596,7 @@ public:
     }
 };
 
+#ifndef USE_PYBIND11_PYTHON_BINDINGS
 class ManipulatorInfo_pickle_suite : public pickle_suite
 {
 public:
@@ -1613,10 +1615,11 @@ public:
         r._vGripperJointNames = state[7];
     }
 };
+#endif // USE_PYBIND11_PYTHON_BINDINGS
 
 RobotBasePtr GetRobot(object o)
 {
-    extract<PyRobotBasePtr> pyrobot(o);
+    extract_<PyRobotBasePtr> pyrobot(o);
     if( pyrobot.check() ) {
         return GetRobot((PyRobotBasePtr)pyrobot);
     }
@@ -1635,7 +1638,7 @@ PyInterfaceBasePtr toPyRobot(RobotBasePtr probot, PyEnvironmentBasePtr pyenv)
 
 RobotBase::ManipulatorPtr GetRobotManipulator(object o)
 {
-    extract<PyRobotBase::PyManipulatorPtr> pymanipulator(o);
+    extract_<PyRobotBase::PyManipulatorPtr> pymanipulator(o);
     if( pymanipulator.check() ) {
         return ((PyRobotBase::PyManipulatorPtr)pymanipulator)->GetManipulator();
     }
@@ -1644,7 +1647,7 @@ RobotBase::ManipulatorPtr GetRobotManipulator(object o)
 
 object toPyRobotManipulator(RobotBase::ManipulatorPtr pmanip, PyEnvironmentBasePtr pyenv)
 {
-    return !pmanip ? object() : object(PyRobotBase::PyManipulatorPtr(new PyRobotBase::PyManipulator(pmanip,pyenv)));
+    return !pmanip ? object() : py::to_object(PyRobotBase::PyManipulatorPtr(new PyRobotBase::PyManipulator(pmanip,pyenv)));
 }
 
 PyRobotBasePtr RaveCreateRobot(PyEnvironmentBasePtr pyenv, const std::string& name)

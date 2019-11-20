@@ -48,7 +48,7 @@ public:
     virtual ~PyStateRestoreContext() {
     }
     py::object __enter__() {
-        return py::object(_state);
+        return py::to_object(_state);
     }
     void __exit__(py::object type, py::object value, py::object traceback) {
         _state->Restore();
@@ -207,7 +207,7 @@ public:
     void SetDOFVelocities(py::object odofvelocities);
     void SetDOFVelocities(py::object odofvelocities, uint32_t checklimits=KinBody::CLA_CheckLimits, py::object oindices = py::object());
     py::object GetLinkVelocities() const;
-    py::object GetLinkAccelerations(py::object odofaccelerations, py::object oexternalaccelerations) const;
+    py::object GetLinkAccelerations(py::object odofaccelerations, py::object oexternalaccelerations=py::object()) const;
     py::object ComputeAABB(bool bEnabledOnlyLinks=false);
     py::object ComputeAABBFromTransform(py::object otransform, bool bEnabledOnlyLinks=false);
     py::object ComputeLocalAABB(bool bEnabledOnlyLinks=false);
@@ -292,6 +292,9 @@ protected:
     void _ParseJointInfos(py::object ojointinfos, std::vector<KinBody::JointInfoConstPtr>& vjointinfos);
 };
 
-}
+template <typename T>
+py::object GetCustomParameters(const std::map<std::string, std::vector<T> >& parameters, py::object oname = py::object(), int index = -1);
+
+} // namespace openravepy
 
 #endif

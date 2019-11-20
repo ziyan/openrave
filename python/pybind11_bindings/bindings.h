@@ -153,8 +153,9 @@ struct select_npy_type<uint32_t>
 } // namespace openravepy
 
 // pybind11
-// #define USE_PYBIND11_PYTHON_BINDINGS
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
+#include <iostream>
+// use std::cout temporarily
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 #include <boost/shared_ptr.hpp>
@@ -169,29 +170,48 @@ inline T extract(object o) {
     return o.cast<T>();
 }
 template <typename T>
+inline T extract(handle o) {
+    return o.cast<T>();
+}
+template <typename T>
 inline object to_object(const T& t) {
-    return ::pybind11::cast(t);
+    return cast(t);
 }
 inline object to_array(PyObject* pyo) {
     // do we need to implement the conversion?
-    return cast/*<numeric::array>*/(pyo);
+    return cast(pyo);
 }
 inline object empty_array() {
-    return numeric::array({1, 0}, nullptr);
+    return numeric::array({}, nullptr);
+}
+template <typename T>
+inline object empty_array_astype() {
+    return array_t<T>({}, nullptr);
 }
 template <typename T>
 struct extract_ {
-    explicit extract_(const T& o) {
+    extract_() = delete;
+    explicit extract_(const object& o) {
         try {
             _data = extract<T>(o);
         }
         catch(...) {
-            throw std::runtime_error("Cannot cast " + std::string(typeid(T).name()));
+            _bcheck = false;
+            std::cout << "Cannot cast " << std::string(typeid(T).name()) << std::endl;
+            // throw std::runtime_error("Cannot cast " + std::string(typeid(T).name()));
         }
     }
-    operator T() && { return std::move(_data); }
+    // user-defined conversion:
+    // https://en.cppreference.com/w/cpp/language/cast_operator
+    //implicit conversion
+    operator T() const { return _data; }
+    // explicit conversion
+    explicit operator T*() const { return _data; }
+    bool check() const { return _bcheck; }
+    bool _bcheck = true;
     T _data;
-};
+}; // struct extract_
+using scope_ = object;
 } // namespace pybind11
 #define OPENRAVE_PYTHON_MODULE(X) PYBIND11_MODULE(X, m)
 #include "map.h"
@@ -212,14 +232,15 @@ inline numeric::array to_array(PyObject* pyo) {
     return static_cast<numeric::array>(handle<>(pyo));
 }
 inline numeric::array empty_array() {
-    return static_cast<numeric::array>(handle<>());
+    return numeric::array(list());
 }
 template<typename T>
-inline numeric::array empty_array_type() {
-    return static_cast<numeric::array>(numeric::array(list()).astype(openravepy::select_dtype<T>::type));
+inline object empty_array_astype() {
+    return empty_array().astype(openravepy::select_dtype<T>::type);
 }
 template <typename T>
 using extract_ = extract<T>;
+using scope_ = scope;
 } // namespace boost::python
 } // namespace boost
 #endif // USE_PYBIND11_PYTHON_BINDINGS
@@ -533,34 +554,34 @@ template <typename T>
 inline py::numeric::array toPyArrayN(const T* pvalues, const size_t N)
 {
     if( N == 0 ) {
-        return py::empty_array_type<T>();
+        return static_cast<py::numeric::array>(py::empty_array_astype<T>());
     }
     npy_intp dims[] = { npy_intp(N) };
     PyObject *pyvalues = PyArray_SimpleNew(1, dims, select_npy_type<T>::type);
     if( pvalues != nullptr ) {
         memcpy(PyArray_DATA(pyvalues), pvalues, N * sizeof(T));
     }
-    return py::to_array(pyvalues);
+    return static_cast<py::numeric::array>(py::handle<>(pyvalues));
 }
 
 template <typename T>
 inline py::numeric::array toPyArrayN(const T* pvalues, std::vector<npy_intp>& dims)
 {
     if( dims.empty() ) {
-        return py::empty_array_type<T>();
+        return static_cast<py::numeric::array>(py::empty_array_astype<T>());
     }
     size_t numel = 1;
     for(npy_intp dim : dims) {
         numel *= dim;
     }
     if( numel == 0 ) {
-        return py::empty_array_type<T>();
+        return static_cast<py::numeric::array>(py::empty_array_astype<T>());
     }
     PyObject *pyvalues = PyArray_SimpleNew(dims.size(), dims.data(), select_npy_type<T>::type);
     if( pvalues != nullptr ) {
         memcpy(PyArray_DATA(pyvalues), pvalues, numel * sizeof(T));
     }
-    return py::to_array(pyvalues);
+    return static_cast<py::numeric::array>(py::handle<>(pyvalues));
 }
 #endif // USE_PYBIND11_PYTHON_BINDINGS
 
@@ -568,7 +589,7 @@ template <typename T>
 inline py::object toPyList(const std::vector<T>& v)
 {
     py::list lvalues;
-    FOREACHC(it, v) {
+    FOREACHC(it,v) {
         lvalues.append(object(*it));
     }
     return std::move(lvalues);

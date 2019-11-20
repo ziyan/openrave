@@ -27,7 +27,6 @@
 
 #define OPENRAVE_BININGS_PYARRAY
 #include "bindings.h"
-#include "docstrings.h"
 
 #include <ANN/ANN.h>
 
@@ -35,6 +34,8 @@
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
 namespace py = pybind11;
 #else
+// cannot get from bindings.h, so have to redeclare them here
+#define PY_ARGS(...) py::args(__VA_ARGS__),
 namespace py = boost::python;
 #endif // USE_PYBIND11_PYTHON_BINDINGS
 using py::object;
@@ -120,15 +121,16 @@ OPENRAVE_SHARED_PTR<ANNkd_tree>       init_from_list(object lst)
     BOOST_ASSERT(sizeof(ANNdist)==8 || sizeof(ANNdist)==4);
     BOOST_ASSERT(sizeof(ANNidx)==4);
 
-    int dimension   = len(lst[0]);
-    int npts        = len(lst);
-    ANNpointArray dataPts     = annAllocPts(npts, dimension);
+    const int dimension   = len(lst[0]);
+    const int npts        = len(lst);
+    ANNpointArray dataPts = annAllocPts(npts, dimension);
 
     // Convert points from Python list to ANNpointArray
-    for (int p = 0; p < len(lst); ++p) {
+    for (int p = 0; p < npts; ++p) {
         ANNpoint& pt = dataPts[p];
-        for (int c = 0; c < dimension; ++c)
+        for (int c = 0; c < dimension; ++c) {
             pt[c] = extract<ANNcoord>(lst[p][c]);
+        }
     }
 
     OPENRAVE_SHARED_PTR<ANNkd_tree>   p(new ANNkd_tree(dataPts, npts, dimension));
@@ -173,7 +175,7 @@ object search_array(ANNkd_tree& kdtree, object qarray, int k, double eps, bool p
     BOOST_ASSERT(k <= kdtree.nPoints());
     int N = len(qarray);
     if( N == 0 ) {
-        return py::make_tuple(py::empty_array_type<int>(), py::empty_array());
+        return py::make_tuple(py::empty_array_astype<int>(), py::empty_array());
     }
 
     BOOST_ASSERT(len(qarray[0])==kdtree.theDim());
@@ -216,14 +218,14 @@ object k_fixed_radius_search(ANNkd_tree& kdtree, object q, double sqRad, int k, 
 
     if( k <= 0 ) {
         int kball = kdtree.annkFRSearch(annq.pt, sqRad, k, NULL, NULL, eps);
-        return py::make_tuple(py::empty_array_type<int>(), py::empty_array(), kball);
+        return py::make_tuple(py::empty_array_astype<int>(), py::empty_array(), kball);
     }
 
     std::vector<ANNdist> dists(k);
     std::vector<ANNidx> nn_idx(k);
     int kball = kdtree.annkFRSearch(annq.pt, sqRad, k, &nn_idx[0], &dists[0], eps);
     if( kball <= 0 )
-        return py::make_tuple(py::empty_array_type<int>(),numeric::array(py::list()),kball);
+        return py::make_tuple(py::empty_array_astype<int>(),py::empty_array(),kball);
 
     npy_intp dims[] = {std::min(k, kball)};
     PyObject *pydists = PyArray_SimpleNew(1,dims, sizeof(ANNdist)==8 ? PyArray_DOUBLE : PyArray_FLOAT);
@@ -252,7 +254,7 @@ object k_fixed_radius_search_array(ANNkd_tree& kdtree, object qarray, double sqR
     BOOST_ASSERT(k <= kdtree.nPoints());
     int N = len(qarray);
     if( N == 0 )
-        return py::make_tuple(py::empty_array_type<int>(), py::empty_array(), py::empty_array());
+        return py::make_tuple(py::empty_array_astype<int>(), py::empty_array(), py::empty_array());
 
     BOOST_ASSERT(len(qarray[0])==kdtree.theDim());
     ANNpointManaged annq(kdtree.theDim());
@@ -268,7 +270,7 @@ object k_fixed_radius_search_array(ANNkd_tree& kdtree, object qarray, double sqR
                 annq.pt[c] = extract<ANNcoord>(q[c]);
             pkball[i] = kdtree.annkFRSearch(annq.pt, sqRad, k, NULL, NULL, eps);
         }
-        return py::make_tuple(py::empty_array_type<int>(), py::empty_array(), py::to_array(pykball));
+        return py::make_tuple(py::empty_array_astype<int>(), py::empty_array(), py::to_array(pykball));
     }
 
     npy_intp dims[] = { N,k};
@@ -349,24 +351,29 @@ OPENRAVE_PYTHON_MODULE(pyANN_int)
 #endif // USE_PYBIND11_PYTHON_BINDINGS
 
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
-    class_<ANNkd_tree, OPENRAVE_SHARED_PTR<ANNkd_tree> >(m, "KDTree")
-    .def( init<>(), &init_from_list)
+    class_<ANNkd_tree, OPENRAVE_SHARED_PTR<ANNkd_tree>, ANNpointSet>(m, "KDTree")
+    // https://pybind11.readthedocs.io/en/stable/advanced/classes.html#custom-constructors
+    .def( init<>(&init_from_list))
 #else
     class_<ANNkd_tree, OPENRAVE_SHARED_PTR<ANNkd_tree> >("KDTree")
     .def("__init__", make_constructor(&init_from_list))
 #endif
     .def("__del__", &destroy_points)
 
-    .def("kSearch", &ksearch, PY_ARGS("q", "k", "eps") DOXY_FN1(ksearch))
-    .def("kSearchArray", &ksearch_array, PY_ARGS("q", "k", "eps") DOXY_FN1(kSearchArray))
-    .def("kPriSearch", &k_priority_search, PY_ARGS("q","k","eps") DOXY_FN1(kPriSearch))
-    .def("kPriSearchArray", &k_priority_search_array, PY_ARGS("q", "k", "eps") DOXY_FN1(kPriSearchArray))
-    .def("kFRSearch", &k_fixed_radius_search, PY_ARGS("q", "sqrad", "k", "eps") DOXY_FN1(kFRSearch))
-    .def("kFRSearchArray", &k_fixed_radius_search_array, PY_ARGS("qarray", "sqrad", "k", "eps") DOXY_FN1(kFRSearchArray))
+    .def("kSearch", &ksearch, PY_ARGS("q", "k", "eps") "Doc of kSearch")
+    .def("kSearchArray", &ksearch_array, PY_ARGS("q", "k", "eps") "Doc of kSearchArray")
+    .def("kPriSearch", &k_priority_search, PY_ARGS("q","k","eps") "Doc of kPriSearch")
+    .def("kPriSearchArray", &k_priority_search_array, PY_ARGS("q", "k", "eps") "Doc of kPriSearchArray")
+    .def("kFRSearch", &k_fixed_radius_search, PY_ARGS("q", "sqrad", "k", "eps") "Doc of kFRSearch")
+    .def("kFRSearchArray", &k_fixed_radius_search_array, PY_ARGS("qarray", "sqrad", "k", "eps") "Doc of kFRSearchArray")
 
     .def("__len__",             &ANNkd_tree::nPoints)
     .def("dim",                 &ANNkd_tree::theDim)
     ;
 
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+    m.def("max_pts_visit",        &annMaxPtsVisit);
+#else
     def("max_pts_visit",        &annMaxPtsVisit);
+#endif
 }
