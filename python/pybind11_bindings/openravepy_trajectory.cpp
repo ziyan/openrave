@@ -28,18 +28,23 @@ using py::handle;
 using py::dict;
 using py::enum_;
 using py::class_;
-using py::no_init;
-using py::bases;
 using py::init;
+using py::scope_; // py::object if USE_PYBIND11_PYTHON_BINDINGS
 using py::scope;
 using py::args;
 using py::return_value_policy;
+using py::slice;
+
+#ifndef USE_PYBIND11_PYTHON_BINDINGS
+using py::no_init;
+using py::bases;
 using py::copy_const_reference;
 using py::docstring_options;
-using py::def;
 using py::pickle_suite;
-using py::slice;
+using py::manage_new_object;
+using py::def;
 namespace numeric = py::numeric;
+#endif // USE_PYBIND11_PYTHON_BINDINGS
 
 class PyTrajectoryBase : public PyInterfaceBase
 {
@@ -176,13 +181,29 @@ public:
         return GetWaypoint(index);
     }
 
-    object __getitem__(slice indices) const
+    object __getitem__(py::slice indices) const
     {
         vector<int>vindices;
         int len = _ptrajectory->GetNumWaypoints();
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+        // https://github.com/pybind/pybind11/issues/1095
+        int start, stop, step;
+        size_t len_ = len, start_, stop_, step_, slicelength_;
+        if (indices.compute(len_, &start_, &stop_, &step_, &slicelength_)) {
+            step = step_;
+            start = start_;
+            stop = stop_;
+        }
+        else {
+            step = 1;
+            start = step > 0 ? 0 : len-1;
+            stop = step > 0 ? len : -1;
+        }
+#else
         int step = !IS_PYTHONOBJECT_NONE(indices.step()) ? extract<int>(indices.step()) : 1;
         int start = !IS_PYTHONOBJECT_NONE(indices.start()) ? extract<int>(indices.start()) : step>0 ? 0 : len-1;
         int stop = !IS_PYTHONOBJECT_NONE(indices.stop()) ? extract<int>(indices.stop()) : step>0 ? len : -1;
+#endif // USE_PYBIND11_PYTHON_BINDINGS
         if(step==0) {
             throw OPENRAVE_EXCEPTION_FORMAT0(_("step cannot be 0"),ORE_InvalidArguments);
         }
