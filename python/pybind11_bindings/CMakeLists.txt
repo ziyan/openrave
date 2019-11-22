@@ -34,7 +34,8 @@ if( Boost_PYTHON_FOUND AND Boost_THREAD_FOUND )
     set(HAVE_ALL_PYTHON_HEADERS ${HAVE_ALL_PYTHON_HEADERS} PARENT_SCOPE)
     if( HAVE_ALL_PYTHON_HEADERS )
       message(STATUS "python and boost-python found")
-      include_directories(${PYTHON_INCLUDE_DIRS} ${OPENRAVE_INCLUDE_LOCAL_DIRS} ${OPENRAVE_CORE_INCLUDE_LOCAL_DIRS})
+      message(STATUS "CMAKE_CURRENT_SOURCE_DIR = ${CMAKE_CURRENT_SOURCE_DIR}")
+      include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${PYTHON_INCLUDE_DIRS} ${OPENRAVE_INCLUDE_LOCAL_DIRS} ${OPENRAVE_CORE_INCLUDE_LOCAL_DIRS})
       
       set(extralibs)
       if( CLOCK_GETTIME_FOUND )
@@ -43,20 +44,15 @@ if( Boost_PYTHON_FOUND AND Boost_THREAD_FOUND )
 
       set(OPENRAVEPY_COMPILE_FLAGS "-DOPENRAVE_CORE_DLL")
       if(USE_PYBIND11_PYTHON_BINDINGS)
+        set(OPENRAVEPY_COMPILE_FLAGS "${OPENRAVEPY_COMPILE_FLAGS} -DUSE_PYBIND11_PYTHON_BINDINGS -g -O0")
         # pybind11 requires less visibility
-        set(OPENRAVEPY_COMPILE_FLAGS "${OPENRAVEPY_COMPILE_FLAGS} -DUSE_PYBIND11_PYTHON_BINDINGS -g -O0 -fvisibility=hidden")
-        set(openravepy_int_cpp_files openravepy_int.cpp openravepy_kinbody.cpp openravepy_global.cpp openravepy_robot.cpp
-          openravepy_collisionchecker.cpp openravepy_controller.cpp openravepy_ikparameterization.cpp openravepy_iksolver.cpp
-          openravepy_module.cpp openravepy_physicsengine.cpp openravepy_planner.cpp openravepy_planningutils.cpp
-          openravepy_sensor.cpp openravepy_sensorsystem.cpp openravepy_spacesampler.cpp openravepy_trajectory.cpp
-          openravepy_viewer.cpp bindings.cpp docstrings.cpp)
-      else()
-        set(openravepy_int_cpp_files openravepy_int.cpp openravepy_kinbody.cpp openravepy_robot.cpp openravepy_global.cpp
-          openravepy_collisionchecker.cpp openravepy_controller.cpp openravepy_ikparameterization.cpp openravepy_iksolver.cpp
-          openravepy_module.cpp openravepy_physicsengine.cpp openravepy_planner.cpp openravepy_planningutils.cpp
-          openravepy_sensor.cpp openravepy_sensorsystem.cpp openravepy_spacesampler.cpp openravepy_trajectory.cpp
-          openravepy_viewer.cpp bindings.cpp docstrings.cpp)
+        # set(OPENRAVEPY_COMPILE_FLAGS "${OPENRAVEPY_COMPILE_FLAGS} -fvisibility=hidden")
       endif()
+      set(openravepy_int_cpp_files openravepy_int.cpp openravepy_kinbody.cpp openravepy_robot.cpp openravepy_global.cpp
+          openravepy_collisionchecker.cpp openravepy_controller.cpp openravepy_ikparameterization.cpp openravepy_iksolver.cpp
+          openravepy_module.cpp openravepy_physicsengine.cpp openravepy_planner.cpp openravepy_planningutils.cpp
+          openravepy_sensor.cpp openravepy_sensorsystem.cpp openravepy_spacesampler.cpp openravepy_trajectory.cpp
+          openravepy_viewer.cpp bindings.cpp docstrings.cpp)
 
       if( MSVC )
         check_cxx_compiler_flag("/bigobj" COMPILER_HAS_BIGOBJ)
@@ -83,7 +79,7 @@ if( Boost_PYTHON_FOUND AND Boost_THREAD_FOUND )
 
       ## ann bindings
       if( ANN_FOUND )
-        add_library(pyANN_int SHARED pyann.cpp bindings.cpp bindings.h)
+        add_library(pyANN_int SHARED pyann.cpp bindings.cpp)
         include_directories(${ANN_INCLUDE_DIR})
         # stdc++ has to be included before opengl libraries due to some ATI bug (http://wiki.fifengine.de/  Segfault_in_cxa_allocate_exception#Workaround)
         target_link_libraries(pyANN_int PUBLIC ${STDC_LIBRARY} ANN ${PYTHON_LIBRARIES} ${Boost_PYTHON_LIBRARY} ${Boost_THREAD_LIBRARY} ${extralibs}
@@ -106,7 +102,7 @@ if( Boost_PYTHON_FOUND AND Boost_THREAD_FOUND )
 
       ## convexdecomposition bindings
       if( CONVEXDECOMPOSITION_FOUND )
-        add_library(convexdecompositionpy SHARED convexdecompositionpy.cpp bindings.cpp bindings.h)
+        add_library(convexdecompositionpy SHARED convexdecompositionpy.cpp bindings.cpp)
         include_directories(${CONVEXDECOMPOSITION_INCLUDE_DIR})
         # stdc++ has to be included before opengl libraries due to some ATI bug (http://wiki.fifengine.de/  Segfault_in_cxa_allocate_exception#Workaround)
         target_link_libraries(convexdecompositionpy PUBLIC ${STDC_LIBRARY} convexdecomposition ${PYTHON_LIBRARIES} ${Boost_PYTHON_LIBRARY} ${Boost_THREAD_LIBRARY} ${extralibs}
