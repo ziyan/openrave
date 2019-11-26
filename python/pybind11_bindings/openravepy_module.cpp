@@ -15,8 +15,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define NO_IMPORT_ARRAY
-#include "openravepy_int.h"
-#include "include/openravepy_environmentbase.h"
+#include <openravepy/openravepy_int.h>
+#include <openravepy/openravepy_environmentbase.h>
 
 namespace openravepy {
 
@@ -44,7 +44,7 @@ using py::def;
 namespace numeric = py::numeric;
 #endif // USE_PYBIND11_PYTHON_BINDINGS
 
-class PyModuleBase : public PyInterfaceBase
+class OPENRAVEPY_API PyModuleBase : public PyInterfaceBase
 {
 protected:
     ModuleBasePtr _pmodule;
@@ -94,6 +94,7 @@ void init_openravepy_module()
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
     using namespace py::literals; // "..."_a
     class_<PyModuleBase, OPENRAVE_SHARED_PTR<PyModuleBase>, PyInterfaceBase>(m, "Module", DOXY_CLASS(ModuleBase))
+    .def(init<ModuleBasePtr, PyEnvironmentBasePtr>(), "module"_a, "env"_a)
 #else
     class_<PyModuleBase, OPENRAVE_SHARED_PTR<PyModuleBase>, bases<PyInterfaceBase> >("Module", DOXY_CLASS(ModuleBase), no_init)
 #endif

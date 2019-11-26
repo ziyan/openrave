@@ -15,12 +15,12 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define NO_IMPORT_ARRAY
-#include "openravepy_int.h"
-#include "include/openravepy_robotbase.h"
-#include "include/openravepy_configurationspecification.h"
-#include "include/openravepy_environmentbase.h"
-#include "include/openravepy_collisionreport.h"
-#include "include/openravepy_trajectorybase.h"
+#include <openravepy/openravepy_int.h>
+#include <openravepy/openravepy_robotbase.h>
+#include <openravepy/openravepy_configurationspecification.h>
+#include <openravepy/openravepy_environmentbase.h>
+#include <openravepy/openravepy_collisionreport.h>
+#include <openravepy/openravepy_trajectorybase.h>
 
 namespace openravepy {
 
@@ -51,7 +51,7 @@ namespace numeric = py::numeric;
 class PyPlannerProgress
 {
 public:
-    PyPlannerProgress() : _iteration(0) {
+    PyPlannerProgress() {
     }
     PyPlannerProgress(const PlannerBase::PlannerProgress& progress) {
         _iteration = progress._iteration;
@@ -60,7 +60,7 @@ public:
         return boost::str(boost::format("<PlannerProgress: iter=%d>")%_iteration);
     }
 
-    int _iteration;
+    int _iteration = 0;
 };
 
 
@@ -68,8 +68,6 @@ class PyPlannerStatus
 {
 public:
     PyPlannerStatus() {
-        statusCode = 0;
-        jointValues = py::empty_array();
     }
 
     PyPlannerStatus(const PlannerStatus& status) {
@@ -81,7 +79,7 @@ public:
 
         if( !status.report ) {
             //_report = "";
-            report = object();
+            report = py::none_();
         }
         else {
             //_report = status._report->__str__();
@@ -91,13 +89,13 @@ public:
         ikparam = toPyIkParameterization(status.ikparam);
     }
 
-    object report;
+    object report = py::none_();
     //std::string _report;
-    object description;
-    object errorOrigin;
-    object jointValues;
-    object ikparam;
-    uint32_t statusCode;
+    object description = py::none_();
+    object errorOrigin = py::none_();
+    object jointValues = py::empty_array();
+    object ikparam = py::none_();
+    uint32_t statusCode = 0;
 };
 
 object toPyPlannerStatus(const PlannerStatus& status)
@@ -234,7 +232,7 @@ public:
         }
 
         string __repr__() {
-            stringstream ss;
+            std::stringstream ss;
             ss << std::setprecision(std::numeric_limits<dReal>::digits10+1);         /// have to do this or otherwise precision gets lost
             ss << "Planner.PlannerParameters(\"\"\"";
             ss << *_paramsread << "\"\"\")" << endl;
@@ -275,7 +273,7 @@ public:
 
     bool InitPlan(PyRobotBasePtr pbase, const string& params)
     {
-        stringstream ss(params);
+        std::stringstream ss(params);
         return _pplanner->InitPlan(openravepy::GetRobot(pbase),ss);
     }
 
@@ -379,7 +377,7 @@ PlannerBase::PlannerParametersConstPtr GetPlannerParametersConst(object o)
 object toPyPlannerParameters(PlannerBase::PlannerParametersPtr params)
 {
     if( !params ) {
-        return py::object();
+        return py::none_();
     }
     return py::to_object(PyPlannerBase::PyPlannerParametersPtr(new PyPlannerBase::PyPlannerParameters(params)));
 }
@@ -407,7 +405,7 @@ void init_openravepy_planner()
 {
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
     using namespace py::literals;
-    object plannerstatuscode = enum_<PlannerStatusCode>(m, "PlannerStatusCode" DOXY_ENUM(PlannerStatusCode))
+    object plannerstatuscode = enum_<PlannerStatusCode>(m, "PlannerStatusCode", py::arithmetic() DOXY_ENUM(PlannerStatusCode))
 #else
     object plannerstatuscode = enum_<PlannerStatusCode>("PlannerStatusCode" DOXY_ENUM(PlannerStatusCode))
 #endif
@@ -417,7 +415,7 @@ void init_openravepy_planner()
                                .value("InterruptedWithSolution",PS_InterruptedWithSolution)
     ;
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
-    object planneraction = enum_<PlannerAction>(m, "PlannerAction" DOXY_ENUM(PlannerAction))
+    object planneraction = enum_<PlannerAction>(m, "PlannerAction", py::arithmetic() DOXY_ENUM(PlannerAction))
 #else
     object planneraction = enum_<PlannerAction>("PlannerAction" DOXY_ENUM(PlannerAction))
 #endif
@@ -450,9 +448,9 @@ void init_openravepy_planner()
         bool (PyPlannerBase::*InitPlan1)(PyRobotBasePtr, PyPlannerBase::PyPlannerParametersPtr,bool) = &PyPlannerBase::InitPlan;
         bool (PyPlannerBase::*InitPlan2)(PyRobotBasePtr, const string &) = &PyPlannerBase::InitPlan;
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
-        scope planner_ = class_<PyPlannerBase, OPENRAVE_SHARED_PTR<PyPlannerBase>, PyInterfaceBase>(m, "Planner", DOXY_CLASS(PlannerBase))
+        scope_ planner = class_<PyPlannerBase, OPENRAVE_SHARED_PTR<PyPlannerBase>, PyInterfaceBase>(m, "Planner", DOXY_CLASS(PlannerBase))
 #else
-        scope planner_ = class_<PyPlannerBase, OPENRAVE_SHARED_PTR<PyPlannerBase>, bases<PyInterfaceBase> >("Planner", DOXY_CLASS(PlannerBase), no_init)
+        scope_ planner = class_<PyPlannerBase, OPENRAVE_SHARED_PTR<PyPlannerBase>, bases<PyInterfaceBase> >("Planner", DOXY_CLASS(PlannerBase), no_init)
 #endif
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
                         .def("InitPlan", InitPlan1,
@@ -478,7 +476,8 @@ void init_openravepy_planner()
                         .def("RegisterPlanCallback",&PyPlannerBase::RegisterPlanCallback, DOXY_FN(PlannerBase,RegisterPlanCallback))
         ;
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
-        class_<PyPlannerBase::PyPlannerParameters, PyPlannerBase::PyPlannerParametersPtr >(m, "PlannerParameters", DOXY_CLASS(PlannerBase::PlannerParameters))
+        // PlannerParameters belongs to Planner
+        class_<PyPlannerBase::PyPlannerParameters, PyPlannerBase::PyPlannerParametersPtr >(planner, "PlannerParameters", DOXY_CLASS(PlannerBase::PlannerParameters))
 #else
         class_<PyPlannerBase::PyPlannerParameters, PyPlannerBase::PyPlannerParametersPtr >("PlannerParameters", DOXY_CLASS(PlannerBase::PlannerParameters))
 #endif

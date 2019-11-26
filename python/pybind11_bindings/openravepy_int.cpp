@@ -14,19 +14,19 @@
 //
 // You should have received a copy of the GNU Lesser General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#include "openravepy_int.h"
+#include <openravepy/openravepy_int.h>
 
 #include <openrave/utils.h>
 #include <boost/thread/once.hpp>
 #include <boost/scoped_ptr.hpp>
 
-#include "openravepy_kinbody.h"
-#include "include/openravepy_collisioncheckerbase.h"
-#include "include/openravepy_collisionreport.h"
-#include "include/openravepy_robotbase.h"
-#include "include/openravepy_sensorbase.h"
-#include "include/openravepy_module.h"
-#include "include/openravepy_physicalenginebase.h"
+#include <openravepy/openravepy_kinbody.h>
+#include <openravepy/openravepy_collisioncheckerbase.h>
+#include <openravepy/openravepy_collisionreport.h>
+#include <openravepy/openravepy_robotbase.h>
+#include <openravepy/openravepy_sensorbase.h>
+#include <openravepy/openravepy_module.h>
+#include <openravepy/openravepy_physicalenginebase.h>
 
 namespace openravepy
 {
@@ -112,11 +112,11 @@ object toPyObject(const rapidjson::Value& value)
         }
     }
     case rapidjson::kNullType: {
-        return py::object();
+        return py::none_();
     }
     default: {
         PyErr_SetString(PyExc_RuntimeError, "unsupported type");
-        return py::object();
+        return py::none_();
     }
     }
 }
@@ -715,7 +715,7 @@ bool PyInterfaceBase::SupportsJSONCommand(const string& cmd)
 
 object PyInterfaceBase::SendCommand(const string& in, bool releasegil, bool lockenv)
 {
-    stringstream sin(in), sout;
+    std::stringstream sin(in), sout;
     {
         openravepy::PythonThreadSaverPtr statesaver;
         openravepy::PyEnvironmentLockSaverPtr envsaver;
@@ -734,7 +734,7 @@ object PyInterfaceBase::SendCommand(const string& in, bool releasegil, bool lock
         }
         sout << std::setprecision(std::numeric_limits<dReal>::digits10+1);     /// have to do this or otherwise precision gets lost
         if( !_pbase->SendCommand(sout,sin) ) {
-            return py::object();
+            return py::none_();
         }
     }
     return py::to_object(sout.str());
@@ -1371,7 +1371,7 @@ public:
         openravepy::PythonThreadSaver threadsaver;
         return _penv->Load(filename, dictatts);
     }
-    bool LoadURI(const string &filename, object odictatts=object()) {
+    bool LoadURI(const string &filename, object odictatts=py::none_()) {
         AttributesList dictatts = toAttributesList(odictatts);
         openravepy::PythonThreadSaver threadsaver;
         return _penv->LoadURI(filename, dictatts);
@@ -1386,7 +1386,7 @@ public:
         return _penv->LoadData(data, dictatts);
     }
 
-    void Save(const string &filename, EnvironmentBase::SelectionOptions options=EnvironmentBase::SO_Everything, object odictatts=object()) {
+    void Save(const string &filename, EnvironmentBase::SelectionOptions options=EnvironmentBase::SO_Everything, object odictatts=py::none_()) {
         extract_<std::string> otarget(odictatts);
         if( otarget.check() ) {
             // old versions
@@ -1402,7 +1402,7 @@ public:
         }
     }
 
-    object WriteToMemory(const string &filetype, EnvironmentBase::SelectionOptions options=EnvironmentBase::SO_Everything, object odictatts=object()) {
+    object WriteToMemory(const string &filetype, EnvironmentBase::SelectionOptions options=EnvironmentBase::SO_Everything, object odictatts=py::none_()) {
         std::vector<char> output;
         extract_<std::string> otarget(odictatts);
         if( otarget.check() ) {
@@ -1416,7 +1416,7 @@ public:
         }
 
         if( output.size() == 0 ) {
-            return py::object();
+            return py::none_();
         }
         else {
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
@@ -1471,7 +1471,7 @@ public:
     {
         OPENRAVE_SHARED_PTR<TriMesh> ptrimesh = _penv->ReadTrimeshURI(OPENRAVE_SHARED_PTR<TriMesh>(),filename);
         if( !ptrimesh ) {
-            return py::object();
+            return py::none_();
         }
         return toPyTriMesh(*ptrimesh);
     }
@@ -1479,7 +1479,7 @@ public:
     {
         OPENRAVE_SHARED_PTR<TriMesh> ptrimesh = _penv->ReadTrimeshURI(OPENRAVE_SHARED_PTR<TriMesh>(),filename,toAttributesList(odictatts));
         if( !ptrimesh ) {
-            return py::object();
+            return py::none_();
         }
         return toPyTriMesh(*ptrimesh);
     }
@@ -1488,7 +1488,7 @@ public:
     {
         OPENRAVE_SHARED_PTR<TriMesh> ptrimesh = _penv->ReadTrimeshData(OPENRAVE_SHARED_PTR<TriMesh>(),data,formathint);
         if( !ptrimesh ) {
-            return py::object();
+            return py::none_();
         }
         return toPyTriMesh(*ptrimesh);
     }
@@ -1496,7 +1496,7 @@ public:
     {
         OPENRAVE_SHARED_PTR<TriMesh> ptrimesh = _penv->ReadTrimeshData(OPENRAVE_SHARED_PTR<TriMesh>(),data,formathint,toAttributesList(odictatts));
         if( !ptrimesh ) {
-            return py::object();
+            return py::none_();
         }
         return toPyTriMesh(*ptrimesh);
     }
@@ -1546,7 +1546,7 @@ public:
     {
         KinBodyPtr pbody = _penv->GetKinBody(name);
         if( !pbody ) {
-            return py::object();
+            return py::none_();
         }
         if( pbody->IsRobot() ) {
             return py::to_object(openravepy::toPyRobot(RaveInterfaceCast<RobotBase>(pbody),shared_from_this()));
@@ -1871,7 +1871,7 @@ public:
         return make_pair(numpoints,numcolors);
     }
 
-    object plot3(object opoints,float pointsize,object ocolors=object(),int drawstyle=0)
+    object plot3(object opoints,float pointsize,object ocolors=py::none_(),int drawstyle=0)
     {
         vector<float> vpoints, vcolors;
         pair<size_t,size_t> sizes = _getGraphPointsColors(opoints,ocolors,vpoints,vcolors);
@@ -1887,7 +1887,7 @@ public:
         return toPyGraphHandle(_penv->plot3(&vpoints[0],sizes.first,sizeof(float)*3,pointsize,vcolor,drawstyle));
     }
 
-    object drawlinestrip(object opoints,float linewidth,object ocolors=object(),int drawstyle=0)
+    object drawlinestrip(object opoints,float linewidth,object ocolors=py::none_(),int drawstyle=0)
     {
         vector<float> vpoints, vcolors;
         pair<size_t,size_t> sizes = _getGraphPointsColors(opoints,ocolors,vpoints,vcolors);
@@ -1903,7 +1903,7 @@ public:
         return toPyGraphHandle(_penv->drawlinestrip(&vpoints[0],sizes.first,sizeof(float)*3,linewidth,vcolor));
     }
 
-    object drawlinelist(object opoints,float linewidth,object ocolors=object(),int drawstyle=0)
+    object drawlinelist(object opoints,float linewidth,object ocolors=py::none_(),int drawstyle=0)
     {
         vector<float> vpoints, vcolors;
         pair<size_t,size_t> sizes = _getGraphPointsColors(opoints,ocolors,vpoints,vcolors);
@@ -1919,7 +1919,7 @@ public:
         return toPyGraphHandle(_penv->drawlinelist(&vpoints[0],sizes.first,sizeof(float)*3,linewidth,vcolor));
     }
 
-    object drawarrow(object op1, object op2, float linewidth=0.002, object ocolor=object())
+    object drawarrow(object op1, object op2, float linewidth=0.002, object ocolor=py::none_())
     {
         RaveVector<float> vcolor(1,0.5,0.5,1);
         if( !IS_PYTHONOBJECT_NONE(ocolor) ) {
@@ -1928,7 +1928,7 @@ public:
         return toPyGraphHandle(_penv->drawarrow(ExtractVector3(op1),ExtractVector3(op2),linewidth,vcolor));
     }
 
-    object drawbox(object opos, object oextents, object ocolor=object())
+    object drawbox(object opos, object oextents, object ocolor=py::none_())
     {
         RaveVector<float> vcolor(1,0.5,0.5,1);
         if( !IS_PYTHONOBJECT_NONE(ocolor) ) {
@@ -1950,7 +1950,7 @@ public:
         return toPyGraphHandle(_penv->drawplane(RaveTransform<float>(ExtractTransform(otransform)), RaveVector<float>(extract<float>(oextents[0]),extract<float>(oextents[1]),0), vtexture));
     }
 
-    object drawtrimesh(object opoints, object oindices=object(), object ocolors=object())
+    object drawtrimesh(object opoints, object oindices=py::none_(), object ocolors=py::none_())
     {
         vector<float> vpoints;
         _getGraphPoints(opoints,vpoints);
@@ -2052,7 +2052,7 @@ public:
     {
         KinBody::BodyState bodystate;
         if( !_penv->GetPublishedBody(name, bodystate, timeout) ) {
-            return py::object();
+            return py::none_();
         }
 
         py::dict ostate;
@@ -2078,7 +2078,7 @@ public:
     {
         std::vector<dReal> jointValues;
         if( !_penv->GetPublishedBodyJointValues(name, jointValues, timeout) ) {
-            return py::object();
+            return py::none_();
         }
         return toPyArray(jointValues);
     }
@@ -2187,7 +2187,7 @@ object GetUserData(UserDataPtr pdata)
             return py::to_object(PyUserData(pdata));
         }
         else {
-            return py::object();
+            return py::none_();
         }
     }
 }
@@ -2214,7 +2214,7 @@ object toPyEnvironment(object o)
     if( pyinterface.check() ) {
         return py::to_object(((PyInterfaceBasePtr)pyinterface)->GetEnv());
     }
-    return py::object();
+    return py::none_();
 }
 
 void LockEnvironment(PyEnvironmentBasePtr pyenv)
@@ -2328,7 +2328,9 @@ OPENRAVE_PYTHON_MODULE(openravepy_int)
 {
     using namespace openravepy;
     import_array(); // not sure if this is necessary for pybind11
-#ifndef USE_PYBIND11_PYTHON_BINDINGS
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+    using namespace py::literals; // "..."_a
+#else // USE_PYBIND11_PYTHON_BINDINGS
 #if BOOST_VERSION >= 103500
     docstring_options doc_options;
     doc_options.disable_cpp_signatures();
@@ -2342,15 +2344,18 @@ OPENRAVE_PYTHON_MODULE(openravepy_int)
     float_from_number<double>();
     init_python_bindings();
     typedef return_value_policy< copy_const_reference > return_copy_const_ref;
-#endif
+#endif // USE_PYBIND11_PYTHON_BINDINGS
 
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
     class_< openrave_exception >( m, "_openrave_exception_", DOXY_CLASS(openrave_exception) )
+    .def(init<>())
+    .def(init<const std::string&, OpenRAVEErrorCode>(), "s"_a, "error"_a = (int) ORE_Failed)
 #else
     class_< openrave_exception >( "_openrave_exception_", DOXY_CLASS(openrave_exception) )
-#endif
     .def( init<const std::string&>() )
     .def( init<const openrave_exception&>() )
+#endif
+
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
     .def( "message", &openrave_exception::message )
 #else
@@ -2380,6 +2385,7 @@ OPENRAVE_PYTHON_MODULE(openravepy_int)
     ;
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
     class_< boost::bad_function_call, std::runtime_error>( m, "_boost_bad_function_call_");
+    // py::register_exception<boost::bad_function_call>(m, "_boost_bad_function_call_");
 #else
     exception_translator<std::runtime_error>();
     //exception_translator<std::exception>();
@@ -2523,9 +2529,9 @@ Because race conditions can pop up when trying to lock the openrave environment 
 
         scope_ env = classenv
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
-                    .def(init<int>(),
-                        "options"_a = ECO_StartSimulationThread
-                    )
+                    .def(init<int>(), "options"_a = (int) ECO_StartSimulationThread)
+                    .def(init<EnvironmentBasePtr>(), "penv"_a)
+                    .def(init<const PyEnvironmentBase&>(), "penv"_a)
 #else
                     .def(init<optional<int> >(py::args("options")))
 #endif
@@ -2569,7 +2575,7 @@ Because race conditions can pop up when trying to lock the openrave environment 
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
                     .def("LoadURI", &PyEnvironmentBase::LoadURI,
                         "filename"_a,
-                        "atts"_a = object(),
+                        "atts"_a = nullptr,
                         DOXY_FN(EnvironmentBase, LoadURI)
                     )
 #else
@@ -2583,7 +2589,7 @@ Because race conditions can pop up when trying to lock the openrave environment 
                     .def("Save",&PyEnvironmentBase::Save,
                         "filename"_a,
                         "options"_a,
-                        "atts"_a = object(),
+                        "atts"_a = nullptr,
                         DOXY_FN(EnvironmentBase,Save)
                     )
 #else
@@ -2593,7 +2599,7 @@ Because race conditions can pop up when trying to lock the openrave environment 
                     .def("WriteToMemory",&PyEnvironmentBase::WriteToMemory,
                         "filetype"_a,
                         "options"_a,
-                        "atts"_a = object(),
+                        "atts"_a = nullptr,
                         DOXY_FN(EnvironmentBase,WriteToMemory)
                     )
 #else
@@ -2667,6 +2673,7 @@ Because race conditions can pop up when trying to lock the openrave environment 
                         DOXY_FN(EnvironmentBase,StartSimulation)
                     )
 #else
+                    .def("StartSimulation",&PyEnvironmentBase::StartSimulation,StartSimulation_overloads(PY_ARGS("timestep","realtime") DOXY_FN(EnvironmentBase,StartSimulation)))
 #endif
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
                     .def("StopSimulation", &PyEnvironmentBase::StopSimulation,
@@ -2706,7 +2713,7 @@ Because race conditions can pop up when trying to lock the openrave environment 
                     .def("plot3", &PyEnvironmentBase::plot3,
                         "points"_a,
                         "pointsize"_a,
-                        "colors"_a = object(),
+                        "colors"_a = nullptr,
                         "drawstyle"_a = 0,
                         DOXY_FN(EnvironmentBase,plot3 "const float; int; int; float; const float; int, bool")
                     )
@@ -2717,7 +2724,7 @@ Because race conditions can pop up when trying to lock the openrave environment 
                     .def("drawlinestrip",&PyEnvironmentBase::drawlinestrip,
                         "points"_a,
                         "linewidth"_a,
-                        "colors"_a = object(),
+                        "colors"_a = nullptr,
                         "drawstyle"_a = 0,
                         DOXY_FN(EnvironmentBase,drawlinestrip "const float; int; int; float; const float")
                     )
@@ -2728,7 +2735,7 @@ Because race conditions can pop up when trying to lock the openrave environment 
                     .def("drawlinelist", &PyEnvironmentBase::drawlinelist,
                         "points"_a,
                         "linewidth"_a,
-                        "colors"_a = object(),
+                        "colors"_a = nullptr,
                         "drawstyle"_a = 0,
                         DOXY_FN(EnvironmentBase,drawlinelist "const float; int; int; float; const float")
                     )
@@ -2740,7 +2747,7 @@ Because race conditions can pop up when trying to lock the openrave environment 
                         "p1"_a,
                         "p2"_a,
                         "linewidth"_a = 2e-3,
-                        "color"_a = object(),
+                        "color"_a = nullptr,
                         DOXY_FN(EnvironmentBase,drawarrow)
                     )
 #else
@@ -2750,7 +2757,7 @@ Because race conditions can pop up when trying to lock the openrave environment 
                     .def("drawbox", &PyEnvironmentBase::drawbox,
                         "pos"_a,
                         "extents"_a,
-                        "color"_a = object(),
+                        "color"_a = nullptr,
                         DOXY_FN(EnvironmentBase,drawbox)
                     )
 #else
@@ -2761,8 +2768,8 @@ Because race conditions can pop up when trying to lock the openrave environment 
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
                     .def("drawtrimesh", &PyEnvironmentBase::drawtrimesh,
                         "points"_a,
-                        "indices"_a = object(),
-                        "colors"_a = object(),
+                        "indices"_a = nullptr,
+                        "colors"_a = nullptr,
                         DOXY_FN(EnvironmentBase, drawtrimesh "const float; int; const int; int; const boost::multi_array")
                     )
 #else
@@ -2863,6 +2870,25 @@ Because race conditions can pop up when trying to lock the openrave environment 
     scope().attr("__docformat__") = "restructuredtext";
 #endif // USE_PYBIND11_PYTHON_BINDINGS
 
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+    openravepy::init_openravepy_global(m);
+    openravepy::InitPlanningUtils(m);
+
+    openravepy::init_openravepy_collisionchecker(m);
+    openravepy::init_openravepy_controller(m);
+    openravepy::init_openravepy_ikparameterization(m);
+    openravepy::init_openravepy_iksolver(m);
+    openravepy::init_openravepy_kinbody(m);
+    openravepy::init_openravepy_robot(m);
+    openravepy::init_openravepy_module(m);
+    openravepy::init_openravepy_physicsengine(m);
+    openravepy::init_openravepy_planner(m);
+    openravepy::init_openravepy_trajectory(m);
+    openravepy::init_openravepy_sensor(m);
+    openravepy::init_openravepy_sensorsystem(m);
+    openravepy::init_openravepy_spacesampler(m);
+    openravepy::init_openravepy_viewer(m);
+#else
     openravepy::init_openravepy_global();
     openravepy::InitPlanningUtils();
 
@@ -2880,6 +2906,7 @@ Because race conditions can pop up when trying to lock the openrave environment 
     openravepy::init_openravepy_sensorsystem();
     openravepy::init_openravepy_spacesampler();
     openravepy::init_openravepy_viewer();
+#endif
 
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
     m.def("RaveGetEnvironmentId", openravepy::RaveGetEnvironmentId, DOXY_FN1(RaveGetEnvironmentId));
@@ -2892,4 +2919,12 @@ Because race conditions can pop up when trying to lock the openrave environment 
     def("RaveGetEnvironments",openravepy::RaveGetEnvironments,DOXY_FN1(RaveGetEnvironments));
     def("RaveCreateInterface",openravepy::RaveCreateInterface, PY_ARGS("env","type","name") DOXY_FN1(RaveCreateInterface));
 #endif
+
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+// bind enums
+py::enum_<OpenRAVE::EnvironmentCreateOptions>(m, "EnvironmentCreateOptions")
+    .value("ECO_StartSimulationThread", OpenRAVE::EnvironmentCreateOptions::ECO_StartSimulationThread)
+    .export_values();
+#endif // USE_PYBIND11_PYTHON_BINDINGS
+
 }

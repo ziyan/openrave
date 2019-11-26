@@ -26,7 +26,7 @@
 #include <openrave/config.h>
 
 #define OPENRAVE_BININGS_PYARRAY
-#include "bindings.h"
+#include <openravepy/bindings.h>
 
 #include <ANN/ANN.h>
 
@@ -325,17 +325,17 @@ object k_priority_search_array(ANNkd_tree& kdtree, object q, int k, double eps)
 OPENRAVE_PYTHON_MODULE(pyANN_int)
 {
     import_array();
-#ifndef USE_PYBIND11_PYTHON_BINDINGS
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+    using namespace py::literals; // "..."_a
+    class_< pyann_exception >(m, "_pyann_exception_" )
+#else
     numeric::array::set_module_and_type("numpy", "ndarray");
     int_from_number<int>();
     float_from_number<float>();
     float_from_number<double>();
     typedef return_value_policy< copy_const_reference > return_copy_const_ref;
     class_< pyann_exception >( "_pyann_exception_" )
-#else
-    class_< pyann_exception >(m, "_pyann_exception_" )
 #endif // USE_PYBIND11_PYTHON_BINDINGS
-    
     .def( init<const std::string&>() )
     .def( init<const pyann_exception&>() )
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
@@ -351,7 +351,9 @@ OPENRAVE_PYTHON_MODULE(pyANN_int)
 #endif // USE_PYBIND11_PYTHON_BINDINGS
 
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
-    class_<ANNkd_tree, OPENRAVE_SHARED_PTR<ANNkd_tree>, ANNpointSet>(m, "KDTree")
+    class_<ANNkd_tree, OPENRAVE_SHARED_PTR<ANNkd_tree>>(m, "KDTree")
+    .def(init<int, int, int>(), "n"_a = 0, "dd"_a = 0, "bs"_a = 1)
+    .def(init<int, int, int, ANNsplitRule>(), "n"_a, "dd"_a, "bs"_a = 1, "split"_a = (int) ANN_KD_SUGGEST)
     // https://pybind11.readthedocs.io/en/stable/advanced/classes.html#custom-constructors
     .def( init<>(&init_from_list))
 #else

@@ -66,7 +66,23 @@
 
 #include <complex>
 #include <algorithm>
+// openrave
+#include <openrave/config.h>
+#include <openrave/logging.h>
 #include <openrave/smart_ptr.h>
+
+#ifndef _RAVE_DISPLAY
+#define _RAVE_DISPLAY(RUNCODE)                                               \
+{                                                                              \
+    printf(                                                                    \
+        "\n%s:%d, [ %s "                                                       \
+        "]\n-----------------------------------------------------------------" \
+        "--------------\n",                                                    \
+        __FILE__, __LINE__, __func__ /*__PRETTY_FUNCTION__*/);                 \
+    RUNCODE;                                                                   \
+    printf("\n");                                                              \
+}
+#endif // _RAVE_DISPLAY
 
 namespace openravepy {
 
@@ -111,6 +127,12 @@ struct select_dtype<uint32_t>
     static constexpr char type[] = "u4";
 };
 
+template <>
+struct select_dtype<uint64_t>
+{
+    static constexpr char type[] = "u8";
+};
+
 template <typename T>
 struct select_npy_type
 {};
@@ -150,13 +172,21 @@ struct select_npy_type<uint32_t>
 {
     static constexpr NPY_TYPES type = NPY_UINT32;
 };
+
+template <>
+struct select_npy_type<uint64_t>
+{
+    static constexpr NPY_TYPES type = NPY_UINT64;
+};
 } // namespace openravepy
 
 // pybind11
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
+#define OPENRAVEPY_API __attribute__ ((visibility ("default")))
 #include <iostream>
 // use std::cout temporarily
 #include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
 #include <pybind11/numpy.h>
 #include <boost/shared_ptr.hpp>
 PYBIND11_DECLARE_HOLDER_TYPE(T, OPENRAVE_SHARED_PTR<T>);
@@ -177,9 +207,15 @@ template <typename T>
 inline object to_object(const T& t) {
     return cast(t);
 }
+// https://stackoverflow.com/questions/26184190/alias-a-templated-function
+template <typename T>
+auto handle_to_object(T const& h) -> decltype(to_object<T>(h))
+{
+    return to_object<T>(h);
+}
 inline object to_array(PyObject* pyo) {
     // do we need to implement the conversion?
-    return cast(pyo);
+    return handle(pyo).cast<array_t<double>>();
 }
 inline object empty_array() {
     return numeric::array({}, nullptr);
@@ -212,12 +248,19 @@ struct extract_ {
     T _data;
 }; // struct extract_
 using scope_ = object;
+inline object none_() {
+    return none();
+}
+using array_int = array_t<int>; // py::array_int
 } // namespace pybind11
 #define OPENRAVE_PYTHON_MODULE(X) PYBIND11_MODULE(X, m)
 #include "map.h"
 #define PY_ARG_(x) py ::arg(x),
 #define PY_ARGS(...) MAP(PY_ARG_, __VA_ARGS__)
+/* ==================== BOOST.PYTHON ==================== */
 #else // USE_PYBIND11_PYTHON_BINDINGS
+/* ==================== BOOST.PYTHON ==================== */
+#define OPENRAVEPY_API
 #include <boost/python.hpp> // already has #include <boost/shared_ptr.hpp>
 #define OPENRAVE_PYTHON_MODULE(X) BOOST_PYTHON_MODULE(X)
 // might need a space before "::"?
@@ -227,6 +270,9 @@ namespace python {
 template <typename T>
 inline object to_object(const T& t) {
     return object(t);
+}
+inline object handle_to_object(PyObject* pyo) {
+    return object(handle<>(pyo));
 }
 inline numeric::array to_array(PyObject* pyo) {
     return static_cast<numeric::array>(handle<>(pyo));
@@ -240,7 +286,12 @@ inline object empty_array_astype() {
 }
 template <typename T>
 using extract_ = extract<T>;
+// https://www.boost.org/doc/libs/1_62_0/libs/python/doc/html/reference/high_level_components/boost_python_scope_hpp.html
 using scope_ = scope;
+inline object none_() {
+    return object();
+}
+using array_int = object; // py::array_int
 } // namespace boost::python
 } // namespace boost
 #endif // USE_PYBIND11_PYTHON_BINDINGS
@@ -263,9 +314,9 @@ namespace py = boost::python;
 inline py::object ConvertStringToUnicode(const std::string& s)
 {
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
-    return py::cast(PyUnicode_Decode(s.c_str(), s.size(), "utf-8", nullptr));
+    return py::cast(s);
 #else
-    return py::object(py::handle<>(PyUnicode_Decode(s.c_str(), s.size(), "utf-8", nullptr)));
+    return py::handle_to_object(PyUnicode_Decode(s.c_str(), s.size(), "utf-8", nullptr));
 #endif
 }
 
@@ -299,12 +350,53 @@ template <typename T>
 inline std::vector<T> ExtractArray(const py::object& o)
 {
     if( IS_PYTHONOBJECT_NONE(o) ) {
-        return std::vector<T>();
+        return {};
     }
-    std::vector<T> v(len(o));
+    std::vector<T> v;
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+    try {
+        py::array_t<T> arr = static_cast<py::array_t<T>>(o);
+        // https://pybind11.readthedocs.io/en/stable/advanced/pycpp/numpy.html
+        // https://qiita.com/lucidfrontier45/items/183526df954c1d6580ba
+        const py::buffer_info info = arr.request();
+        const auto &shape = info.shape;
+        switch(info.ndim) {
+            case 0: {
+                return {};
+            }
+            case 1: {
+                const uint32_t m = shape[0];
+                v.resize(m);
+                for(uint32_t i = 0; i < m; ++i) {
+                    v[i] = *arr.data(i);
+                }
+                break;
+            }
+            case 2: {
+                const uint32_t m = shape[0], n = shape[1];
+                v.resize(m*n);
+                // row-major
+                for(uint32_t i = 0, ij = 0; i < m; ++i) {
+                    for(uint32_t j = 0; j < n; ++j, ++ij) {
+                        v[ij] = *arr.data(i, j);
+                    }
+                }
+                break;
+            }
+            default: {
+                RAVELOG_WARN("Cannot convert array of dimension > 2\n");
+            }
+        }
+    }
+    catch(...) {
+        RAVELOG_WARN("Cannot cast py::object to py::array_t<T>\n");
+    }
+#else // USE_PYBIND11_PYTHON_BINDINGS
+    v.resize(len(o));
     for(size_t i = 0; i < v.size(); ++i) {
         v[i] = py::extract<T>(o[i]);
     }
+#endif // USE_PYBIND11_PYTHON_BINDINGS
     return v;
 }
 
@@ -540,7 +632,8 @@ void init_python_bindings();
 template <typename T>
 inline py::array_t<T> toPyArrayN(const T* pvalues, const size_t N)
 {
-    std::vector<npy_intp> dims {(long int)1, (long int)N};
+    // one-dimension numpy array
+    std::vector<npy_intp> dims {(long int)N};
     return py::array_t<T>(dims, pvalues); 
 }
 

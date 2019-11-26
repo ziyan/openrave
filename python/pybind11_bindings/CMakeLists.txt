@@ -3,6 +3,7 @@ if(NOT OPENRAVE_DISABLE_ASSERT_HANDLER)
 endif()
 
 set(USE_PYBIND11_PYTHON_BINDINGS OFF)
+set(PYBIND11_PYTHON_BINDINGS_DEBUG OFF)
 
 if( Boost_PYTHON_FOUND AND Boost_THREAD_FOUND )
   if( PYTHONLIBS_FOUND OR PYTHON_LIBRARIES )
@@ -34,7 +35,8 @@ if( Boost_PYTHON_FOUND AND Boost_THREAD_FOUND )
     set(HAVE_ALL_PYTHON_HEADERS ${HAVE_ALL_PYTHON_HEADERS} PARENT_SCOPE)
     if( HAVE_ALL_PYTHON_HEADERS )
       message(STATUS "python and boost-python found")
-      include_directories(${PYTHON_INCLUDE_DIRS} ${OPENRAVE_INCLUDE_LOCAL_DIRS} ${OPENRAVE_CORE_INCLUDE_LOCAL_DIRS})
+      message(STATUS "CMAKE_CURRENT_SOURCE_DIR = ${CMAKE_CURRENT_SOURCE_DIR}")
+      include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${PYTHON_INCLUDE_DIRS} ${OPENRAVE_INCLUDE_LOCAL_DIRS} ${OPENRAVE_CORE_INCLUDE_LOCAL_DIRS})
       
       set(extralibs)
       if( CLOCK_GETTIME_FOUND )
@@ -43,19 +45,20 @@ if( Boost_PYTHON_FOUND AND Boost_THREAD_FOUND )
 
       set(OPENRAVEPY_COMPILE_FLAGS "-DOPENRAVE_CORE_DLL")
       if(USE_PYBIND11_PYTHON_BINDINGS)
+        set(OPENRAVEPY_COMPILE_FLAGS "${OPENRAVEPY_COMPILE_FLAGS} -DUSE_PYBIND11_PYTHON_BINDINGS")
+        if(PYBIND11_PYTHON_BINDINGS_DEBUG)
+          set(OPENRAVEPY_COMPILE_FLAGS "${OPENRAVEPY_COMPILE_FLAGS} -g -O0")
+        else()
+          set(OPENRAVEPY_COMPILE_FLAGS "${OPENRAVEPY_COMPILE_FLAGS} -g0 -O3")
+        endif()          
         # pybind11 requires less visibility
-        set(OPENRAVEPY_COMPILE_FLAGS "${OPENRAVEPY_COMPILE_FLAGS} -DUSE_PYBIND11_PYTHON_BINDINGS -fvisibility=hidden")
-        set(openravepy_int_cpp_files openravepy_int.cpp openravepy_kinbody.cpp openravepy_global.cpp openravepy_robot.cpp
-          openravepy_collisionchecker.cpp openravepy_controller.cpp openravepy_ikparameterization.cpp openravepy_iksolver.cpp
-          openravepy_module.cpp openravepy_physicsengine.cpp openravepy_planner.cpp openravepy_planningutils.cpp
-          )
-      else()
-        set(openravepy_int_cpp_files openravepy_int.cpp openravepy_kinbody.cpp openravepy_robot.cpp openravepy_global.cpp
+        set(OPENRAVEPY_COMPILE_FLAGS "${OPENRAVEPY_COMPILE_FLAGS} -fvisibility=hidden")
+      endif()
+      set(openravepy_int_cpp_files openravepy_int.cpp openravepy_kinbody.cpp openravepy_robot.cpp openravepy_global.cpp
           openravepy_collisionchecker.cpp openravepy_controller.cpp openravepy_ikparameterization.cpp openravepy_iksolver.cpp
           openravepy_module.cpp openravepy_physicsengine.cpp openravepy_planner.cpp openravepy_planningutils.cpp
           openravepy_sensor.cpp openravepy_sensorsystem.cpp openravepy_spacesampler.cpp openravepy_trajectory.cpp
           openravepy_viewer.cpp bindings.cpp docstrings.cpp)
-      endif()
 
       if( MSVC )
         check_cxx_compiler_flag("/bigobj" COMPILER_HAS_BIGOBJ)
@@ -78,10 +81,12 @@ if( Boost_PYTHON_FOUND AND Boost_THREAD_FOUND )
         set_target_properties(openravepy_int PROPERTIES SUFFIX ".so")
       endif()
       install(TARGETS openravepy_int DESTINATION ${OPENRAVEPY_VER_INSTALL_DIR} COMPONENT ${COMPONENT_PREFIX}python)
+      file(GLOB openravepy_headers "openravepy/*.h")
+      install(FILES ${openravepy_headers} DESTINATION include/openravepy)
 
       ## ann bindings
       if( ANN_FOUND )
-        add_library(pyANN_int SHARED pyann.cpp bindings.cpp bindings.h)
+        add_library(pyANN_int SHARED pyann.cpp bindings.cpp)
         include_directories(${ANN_INCLUDE_DIR})
         # stdc++ has to be included before opengl libraries due to some ATI bug (http://wiki.fifengine.de/  Segfault_in_cxa_allocate_exception#Workaround)
         target_link_libraries(pyANN_int PUBLIC ${STDC_LIBRARY} ANN ${PYTHON_LIBRARIES} ${Boost_PYTHON_LIBRARY} ${Boost_THREAD_LIBRARY} ${extralibs}
@@ -104,7 +109,7 @@ if( Boost_PYTHON_FOUND AND Boost_THREAD_FOUND )
 
       ## convexdecomposition bindings
       if( CONVEXDECOMPOSITION_FOUND )
-        add_library(convexdecompositionpy SHARED convexdecompositionpy.cpp bindings.cpp bindings.h)
+        add_library(convexdecompositionpy SHARED convexdecompositionpy.cpp bindings.cpp)
         include_directories(${CONVEXDECOMPOSITION_INCLUDE_DIR})
         # stdc++ has to be included before opengl libraries due to some ATI bug (http://wiki.fifengine.de/  Segfault_in_cxa_allocate_exception#Workaround)
         target_link_libraries(convexdecompositionpy PUBLIC ${STDC_LIBRARY} convexdecomposition ${PYTHON_LIBRARIES} ${Boost_PYTHON_LIBRARY} ${Boost_THREAD_LIBRARY} ${extralibs}

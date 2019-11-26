@@ -15,13 +15,13 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define NO_IMPORT_ARRAY
-#include "openravepy_int.h"
-#include "include/openravepy_collisionreport.h"
-#include "include/openravepy_trajectorybase.h"
-#include "openravepy_kinbody.h"
-#include "include/openravepy_configurationspecification.h"
-#include "include/openravepy_robotbase.h"
-#include "include/openravepy_plannerbase.h"
+#include <openravepy/openravepy_int.h>
+#include <openravepy/openravepy_collisionreport.h>
+#include <openravepy/openravepy_trajectorybase.h>
+#include <openravepy/openravepy_kinbody.h>
+#include <openravepy/openravepy_configurationspecification.h>
+#include <openravepy/openravepy_robotbase.h>
+#include <openravepy/openravepy_plannerbase.h>
 #include <openrave/planningutils.h>
 
 namespace openravepy {
@@ -230,7 +230,7 @@ public:
 
     object GetReport() const {
         if( !_pconstraints->GetReport() ) {
-            return py::object();
+            return py::none_();
         }
         return py::to_object(openravepy::toPyCollisionReport(_pconstraints->GetReport(), _pyenv));
     }
@@ -321,7 +321,7 @@ object pyMergeTrajectories(object pytrajectories)
 class PyDHParameter
 {
 public:
-    PyDHParameter() : parentindex(-1), transform(ReturnTransform(Transform())), d(0), a(0), theta(0), alpha(0) {
+    PyDHParameter() {
     }
     PyDHParameter(const OpenRAVE::planningutils::DHParameter& p, PyEnvironmentBasePtr pyenv) : joint(toPyKinBodyJoint(OPENRAVE_CONST_POINTER_CAST<KinBody::Joint>(p.joint), pyenv)), parentindex(p.parentindex), transform(ReturnTransform(p.transform)), d(p.d), a(p.a), theta(p.theta), alpha(p.alpha) {
     }
@@ -340,10 +340,10 @@ public:
         return ConvertStringToUnicode(__str__());
     }
 
-    object joint;
-    int parentindex;
-    object transform;
-    dReal d, a, theta, alpha;
+    object joint = py::none_();
+    int parentindex = -1;
+    object transform = ReturnTransform(Transform());
+    dReal d = 0.0, a = 0.0, theta = 0.0, alpha = 0.0;
 };
 
 object toPyDHParameter(const OpenRAVE::planningutils::DHParameter& p, PyEnvironmentBasePtr pyenv)
@@ -357,7 +357,7 @@ class DHParameter_pickle_suite : public pickle_suite
 public:
     static py::tuple getinitargs(const PyDHParameter& p)
     {
-        return py::make_tuple(object(), p.parentindex, p.transform, p.d, p.a, p.theta, p.alpha);
+        return py::make_tuple(py::none_(), p.parentindex, p.transform, p.d, p.a, p.theta, p.alpha);
     }
 };
 #endif
@@ -377,7 +377,7 @@ py::list pyGetDHParameters(PyKinBodyPtr pybody)
 class PyManipulatorIKGoalSampler
 {
 public:
-    PyManipulatorIKGoalSampler(object pymanip, object oparameterizations, int nummaxsamples=20, int nummaxtries=10, dReal jitter=0, bool searchfreeparameters=true, uint32_t ikfilteroptions = IKFO_CheckEnvCollisions, object freevalues = object()) {
+    PyManipulatorIKGoalSampler(object pymanip, object oparameterizations, int nummaxsamples=20, int nummaxtries=10, dReal jitter=0, bool searchfreeparameters=true, uint32_t ikfilteroptions = IKFO_CheckEnvCollisions, object freevalues = py::none_()) {
         std::list<IkParameterization> listparameterizationsPtr;
         size_t num = len(oparameterizations);
         for(size_t i = 0; i < num; ++i) {
@@ -411,7 +411,7 @@ public:
                 return toPyArray(vgoal);
             }
         }
-        return py::object();
+        return py::none_();
     }
 
     object SampleAll(int maxsamples=0, int maxchecksamples=0, bool releasegil = false)
@@ -725,8 +725,10 @@ void InitPlanningUtils()
             "nummaxtries"_a = 10,
             "jitter"_a = 0,
             "searchfreeparameters"_a = true,
-            "ikfilteroptions"_a = IKFO_CheckEnvCollisions,
-            "freevalues"_a = py::object()
+            // In openravepy_iksolver.cpp binds IkFilterOptions::IKFO_CheckEnvCollisions
+            // How to use it here?
+            "ikfilteroptions"_a = (int) IKFO_CheckEnvCollisions,
+            "freevalues"_a = nullptr
         )
 #else
         class_<planningutils::PyManipulatorIKGoalSampler, planningutils::PyManipulatorIKGoalSamplerPtr >("ManipulatorIKGoalSampler", DOXY_CLASS(planningutils::ManipulatorIKGoalSampler), no_init)

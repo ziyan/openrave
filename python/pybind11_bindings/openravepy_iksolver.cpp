@@ -15,8 +15,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define NO_IMPORT_ARRAY
-#include "openravepy_int.h"
-#include "include/openravepy_environmentbase.h"
+#include <openravepy/openravepy_int.h>
+#include <openravepy/openravepy_environmentbase.h>
 #include <openrave/utils.h>
 
 namespace openravepy {
@@ -66,7 +66,7 @@ public:
     object GetMapData(const std::string& key) {
         IkReturn::CustomData::const_iterator it = _ret._mapdata.find(key);
         if( it == _ret._mapdata.end() ) {
-            return py::object();
+            return py::none_();
         }
         return toPyArray(it->second);
     }
@@ -289,7 +289,7 @@ object toPyIkSolver(IkSolverBasePtr pIkSolver, object opyenv)
     if( pyenv.check() ) {
         return py::to_object(toPyIkSolver(pIkSolver,(PyEnvironmentBasePtr)pyenv));
     }
-    return py::object();
+    return py::none_();
 }
 
 PyIkSolverBasePtr RaveCreateIkSolver(PyEnvironmentBasePtr pyenv, const std::string& name)

@@ -18,7 +18,7 @@
 #define OPENRAVEPY_INTERNAL_COLLISIONREPORT_H
 
 #define NO_IMPORT_ARRAY
-#include "../openravepy_int.h"
+#include <openravepy/openravepy_int.h>
 
 namespace openravepy {
 using py::object;
@@ -35,20 +35,21 @@ public:
         PYCONTACT();
         PYCONTACT(const CollisionReport::CONTACT& c);
 
-        string __str__();
+        std::string __str__();
         object __unicode__();
-        object pos, norm;
+        object pos = py::none_();
+        object norm = py::none_();
         dReal depth;
     };
 
     void init(PyEnvironmentBasePtr pyenv);
 
-    string __str__();
+    std::string __str__();
     object __unicode__();
 
     int options;
-    object plink1, plink2;
-
+    object plink1 = py::none_();
+    object plink2 = py::none_();
     py::list vLinkColliding;
     dReal minDistance;
     int numWithinTol;

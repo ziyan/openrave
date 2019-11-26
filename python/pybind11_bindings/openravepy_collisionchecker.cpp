@@ -15,9 +15,9 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define NO_IMPORT_ARRAY
-#include "openravepy_int.h"
-#include "openravepy_kinbody.h"
-#include "include/openravepy_environmentbase.h"
+#include <openravepy/openravepy_int.h>
+#include <openravepy/openravepy_kinbody.h>
+#include <openravepy/openravepy_environmentbase.h>
 
 namespace openravepy {
 
@@ -42,8 +42,8 @@ using py::docstring_options;
 using py::pickle_suite;
 using py::manage_new_object;
 using py::def;
-namespace numeric = py::numeric;
 #endif // USE_PYBIND11_PYTHON_BINDINGS
+namespace numeric = py::numeric;
 
 class PyCollisionReport
 {
@@ -69,7 +69,7 @@ public:
         string __str__()
         {
             Vector vpos = ExtractVector3(pos), vnorm = ExtractVector3(norm);
-            stringstream ss;
+            std::stringstream ss;
             ss << std::setprecision(std::numeric_limits<dReal>::digits10+1);     /// have to do this or otherwise precision gets lost
             ss << "pos=["<<vpos.x<<", "<<vpos.y<<", "<<vpos.z<<"], norm=["<<vnorm.x<<", "<<vnorm.y<<", "<<vnorm.z<<"]";
             return ss.str();
@@ -77,7 +77,8 @@ public:
         object __unicode__() {
             return ConvertStringToUnicode(__str__());
         }
-        object pos, norm;
+        object pos = py::none_();
+        object norm = py::none_();
         dReal depth;
     };
 
@@ -91,13 +92,13 @@ public:
             plink1 = openravepy::toPyKinBodyLink(OPENRAVE_CONST_POINTER_CAST<KinBody::Link>(report->plink1), pyenv);
         }
         else {
-            plink1 = object();
+            plink1 = py::none_();
         }
         if( !!report->plink2 ) {
             plink2 = openravepy::toPyKinBodyLink(OPENRAVE_CONST_POINTER_CAST<KinBody::Link>(report->plink2), pyenv);
         }
         else {
-            plink2 = object();
+            plink2 = py::none_();
         }
         py::list newcontacts;
         FOREACH(itc, report->contacts) {
@@ -128,8 +129,8 @@ public:
     }
 
     int options;
-    object plink1, plink2;
-
+    object plink1 = py::none_();
+    object plink2 = py::none_();
     py::list vLinkColliding;
     dReal minDistance;
     int numWithinTol;
@@ -396,7 +397,7 @@ public:
         KinBodyConstPtr pbody1 = openravepy::GetKinBody(o1);
 
         std::vector<KinBodyConstPtr> vbodyexcluded;
-        for(int i = 0; i < len(bodyexcluded); ++i) {
+        for(size_t i = 0; i < len(bodyexcluded); ++i) {
             PyKinBodyPtr pbody = extract<PyKinBodyPtr>(bodyexcluded[i]);
             if( !!pbody ) {
                 vbodyexcluded.push_back(openravepy::GetKinBody(pbody));
@@ -406,7 +407,7 @@ public:
             }
         }
         std::vector<KinBody::LinkConstPtr> vlinkexcluded;
-        for(int i = 0; i < len(linkexcluded); ++i) {
+        for(size_t i = 0; i < len(linkexcluded); ++i) {
             KinBody::LinkConstPtr plink2 = openravepy::GetKinBodyLinkConst(linkexcluded[i]);
             if( !!plink2 ) {
                 vlinkexcluded.push_back(plink2);
@@ -432,7 +433,7 @@ public:
         KinBody::LinkConstPtr plink1 = openravepy::GetKinBodyLinkConst(o1);
         KinBodyConstPtr pbody1 = openravepy::GetKinBody(o1);
 
-        for(int i = 0; i < len(bodyexcluded); ++i) {
+        for(size_t i = 0; i < len(bodyexcluded); ++i) {
             PyKinBodyPtr pbody = extract<PyKinBodyPtr>(bodyexcluded[i]);
             if( !!pbody ) {
                 vbodyexcluded.push_back(openravepy::GetKinBody(pbody));
@@ -442,7 +443,7 @@ public:
             }
         }
         std::vector<KinBody::LinkConstPtr> vlinkexcluded;
-        for(int i = 0; i < len(linkexcluded); ++i) {
+        for(size_t i = 0; i < len(linkexcluded); ++i) {
             KinBody::LinkConstPtr plink2 = openravepy::GetKinBodyLinkConst(linkexcluded[i]);
             if( !!plink2 ) {
                 vlinkexcluded.push_back(plink2);
@@ -470,7 +471,7 @@ public:
     bool CheckCollision(PyKinBodyPtr pbody, object bodyexcluded, object linkexcluded)
     {
         std::vector<KinBodyConstPtr> vbodyexcluded;
-        for(int i = 0; i < len(bodyexcluded); ++i) {
+        for(size_t i = 0; i < len(bodyexcluded); ++i) {
             PyKinBodyPtr pbody = extract<PyKinBodyPtr>(bodyexcluded[i]);
             if( !!pbody ) {
                 vbodyexcluded.push_back(openravepy::GetKinBody(pbody));
@@ -480,7 +481,7 @@ public:
             }
         }
         std::vector<KinBody::LinkConstPtr> vlinkexcluded;
-        for(int i = 0; i < len(linkexcluded); ++i) {
+        for(size_t i = 0; i < len(linkexcluded); ++i) {
             KinBody::LinkConstPtr plink2 = openravepy::GetKinBodyLinkConst(linkexcluded[i]);
             if( !!plink2 ) {
                 vlinkexcluded.push_back(plink2);
@@ -495,7 +496,7 @@ public:
     bool CheckCollision(PyKinBodyPtr pbody, object bodyexcluded, object linkexcluded, PyCollisionReportPtr pReport)
     {
         std::vector<KinBodyConstPtr> vbodyexcluded;
-        for(int i = 0; i < len(bodyexcluded); ++i) {
+        for(size_t i = 0; i < len(bodyexcluded); ++i) {
             PyKinBodyPtr pbody = extract<PyKinBodyPtr>(bodyexcluded[i]);
             if( !!pbody ) {
                 vbodyexcluded.push_back(openravepy::GetKinBody(pbody));
@@ -505,7 +506,7 @@ public:
             }
         }
         std::vector<KinBody::LinkConstPtr> vlinkexcluded;
-        for(int i = 0; i < len(linkexcluded); ++i) {
+        for(size_t i = 0; i < len(linkexcluded); ++i) {
             KinBody::LinkConstPtr plink2 = openravepy::GetKinBodyLinkConst(linkexcluded[i]);
             if( !!plink2 ) {
                 vlinkexcluded.push_back(plink2);
@@ -742,7 +743,10 @@ void init_openravepy_collisionchecker()
     ;
 
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
+    // should this be inside CollisionReport, instead of module "m"?
     class_<PyCollisionReport::PYCONTACT, OPENRAVE_SHARED_PTR<PyCollisionReport::PYCONTACT> >(m, "Contact", DOXY_CLASS(CollisionReport::CONTACT))
+    .def(init<>())
+    .def(init<const CollisionReport::CONTACT&>(), "c"_a)
 #else
     class_<PyCollisionReport::PYCONTACT, OPENRAVE_SHARED_PTR<PyCollisionReport::PYCONTACT> >("Contact", DOXY_CLASS(CollisionReport::CONTACT))
 #endif
@@ -754,6 +758,8 @@ void init_openravepy_collisionchecker()
     ;
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
     class_<PyCollisionReport, OPENRAVE_SHARED_PTR<PyCollisionReport> >(m, "CollisionReport", DOXY_CLASS(CollisionReport))
+    .def(init<>())
+    .def(init<CollisionReportPtr>(), "preport"_a)
 #else
     class_<PyCollisionReport, OPENRAVE_SHARED_PTR<PyCollisionReport> >("CollisionReport", DOXY_CLASS(CollisionReport))
 #endif
@@ -793,6 +799,7 @@ void init_openravepy_collisionchecker()
 
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
     class_<PyCollisionCheckerBase, OPENRAVE_SHARED_PTR<PyCollisionCheckerBase>, PyInterfaceBase>(m, "CollisionChecker", DOXY_CLASS(CollisionCheckerBase))
+    .def(init<CollisionCheckerBasePtr, PyEnvironmentBasePtr>(), "pcollisionchecker"_a, "penv"_a)
 #else
     class_<PyCollisionCheckerBase, OPENRAVE_SHARED_PTR<PyCollisionCheckerBase>, bases<PyInterfaceBase> >("CollisionChecker", DOXY_CLASS(CollisionCheckerBase), no_init)
 #endif

@@ -15,11 +15,11 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define NO_IMPORT_ARRAY
-#include "openravepy_kinbody.h"
-#include "include/openravepy_configurationspecification.h"
-#include "include/openravepy_environmentbase.h"
-#include "include/openravepy_collisioncheckerbase.h"
-#include "include/openravepy_collisionreport.h"
+#include <openravepy/openravepy_kinbody.h>
+#include <openravepy/openravepy_configurationspecification.h>
+#include <openravepy/openravepy_environmentbase.h>
+#include <openravepy/openravepy_collisioncheckerbase.h>
+#include <openravepy/openravepy_collisionreport.h>
 
 namespace openravepy {
 
@@ -65,21 +65,18 @@ object GetCustomParameters(const std::map<std::string, std::vector<T> >& paramet
                 return py::to_object(it->second.at(index));
             }
             else {
-                return py::object();
+                return py::none_();
             }
         }
         return toPyArray(it->second);
     }
-    return py::object();
+    return py::none_();
 }
 
 class PySideWall
 {
 public:
     PySideWall() {
-        transf = ReturnTransform(Transform());
-        vExtents = toPyVector3(Vector());
-        type = 0;
     }
     PySideWall(const KinBody::GeometryInfo::SideWall& sidewall) {
         transf = ReturnTransform(sidewall.transf);
@@ -92,33 +89,19 @@ public:
         sidewall.type = static_cast<KinBody::GeometryInfo::SideWallType>(type);
     }
 
-    object transf, vExtents;
-    int type;
+    object transf = ReturnTransform(Transform());
+    object vExtents = toPyVector3(Vector());
+    int type = 0;
 };
 
 class PyGeometryInfo
 {
 public:
     PyGeometryInfo() {
-        _t = ReturnTransform(Transform());
-        _vGeomData = toPyVector4(Vector());
-        _vGeomData2 = toPyVector4(Vector());
-        _vGeomData3 = toPyVector4(Vector());
-        _vGeomData4 = toPyVector4(Vector());
-        _vDiffuseColor = toPyVector3(Vector(1,1,1));
-        _vAmbientColor = toPyVector3(Vector(0,0,0));
-        _type = GT_None;
-        _fTransparency = 0;
-        _vRenderScale = toPyVector3(Vector(1,1,1));
-        _vCollisionScale = toPyVector3(Vector(1,1,1));
-        _bVisible = true;
-        _bModifiable = true;
-        _vSideWalls = py::list();
     }
     PyGeometryInfo(const KinBody::GeometryInfo& info) {
         Init(info);
     }
-
 
     void Init(const KinBody::GeometryInfo& info) {
         _t = ReturnTransform(info._t);
@@ -156,7 +139,7 @@ public:
         if( pgeominfo->ComputeInnerEmptyVolume(tInnerEmptyVolume, abInnerEmptyExtents) ) {
             return py::make_tuple(ReturnTransform(tInnerEmptyVolume), toPyVector3(abInnerEmptyExtents));
         }
-        return py::make_tuple(object(), object());
+        return py::make_tuple(py::none_(), py::none_());
     }
 
     object ComputeAABB(object otransform) {
@@ -173,7 +156,7 @@ public:
         Init(*pgeominfo);
     }
 
-    object SerializeJSON(const dReal fUnitScale=1.0, object ooptions=object())
+    object SerializeJSON(const dReal fUnitScale=1.0, object ooptions=py::none_())
     {
         rapidjson::Document doc;
         KinBody::GeometryInfoPtr pgeominfo = GetGeometryInfo();
@@ -222,16 +205,25 @@ public:
         return pinfo;
     }
 
-    object _t, _vGeomData, _vGeomData2, _vGeomData3, _vGeomData4, _vDiffuseColor, _vAmbientColor, _meshcollision;
+    object _t = ReturnTransform(Transform());
+    object _vGeomData = toPyVector4(Vector());
+    object _vGeomData2 = toPyVector4(Vector());
+    object _vGeomData3 = toPyVector4(Vector());
+    object _vGeomData4 = toPyVector4(Vector());
+    object _vDiffuseColor = toPyVector3(Vector(1,1,1));
+    object _vAmbientColor = toPyVector3(Vector(0,0,0));
+    object _meshcollision = py::none_();
     py::list _vSideWalls;
     float _containerBaseHeight;
-    GeometryType _type;
-    object _name;
-    object _filenamerender, _filenamecollision;
-    object _vRenderScale, _vCollisionScale;
+    GeometryType _type = GT_None;
+    // best to initialize these as None's
+    object _name = py::none_();
+    object _filenamerender = py::none_(), _filenamecollision = py::none_();
+    object _vRenderScale = toPyVector3(Vector(1,1,1));
+    object _vCollisionScale = toPyVector3(Vector(1,1,1));
     py::dict _mapExtraGeometries;
-    float _fTransparency;
-    bool _bVisible, _bModifiable;
+    float _fTransparency = 0.0;
+    bool _bVisible = true, _bModifiable = true;
 };
 typedef OPENRAVE_SHARED_PTR<PyGeometryInfo> PyGeometryInfoPtr;
 
@@ -239,13 +231,6 @@ class PyLinkInfo
 {
 public:
     PyLinkInfo() {
-        _t = ReturnTransform(Transform());
-        _tMassFrame = ReturnTransform(Transform());
-        _mass = 0;
-        _vinertiamoments = toPyVector3(Vector(1,1,1));
-        _bStatic = false;
-        _bIsEnabled = true;
-        _vForcedAdjacentLinks = py::list();
     }
     PyLinkInfo(const KinBody::LinkInfo& info) {
         FOREACHC(itgeominfo, info._vgeometryinfos) {
@@ -344,14 +329,15 @@ public:
     }
 
     py::list _vgeometryinfos;
-    object _name;
-    object _t, _tMassFrame;
-    dReal _mass;
-    object _vinertiamoments;
+    object _name = py::none_();
+    object _t = ReturnTransform(Transform());
+    object _tMassFrame = ReturnTransform(Transform());
+    dReal _mass = 0.0;
+    object _vinertiamoments = toPyVector3(Vector(1,1,1));
     py::dict _mapFloatParameters, _mapIntParameters, _mapStringParameters;
-    object _vForcedAdjacentLinks;
-    bool _bStatic;
-    bool _bIsEnabled;
+    object _vForcedAdjacentLinks = py::list();
+    bool _bStatic = false;
+    bool _bIsEnabled = true;
 };
 
 PyLinkInfoPtr toPyLinkInfo(const KinBody::LinkInfo& linkinfo)
@@ -363,21 +349,6 @@ class PyElectricMotorActuatorInfo
 {
 public:
     PyElectricMotorActuatorInfo() {
-        gear_ratio = 0;
-        assigned_power_rating = 0;
-        max_speed = 0;
-        no_load_speed = 0;
-        stall_torque = 0;
-        max_instantaneous_torque = 0;
-        nominal_torque = 0;
-        rotor_inertia = 0;
-        torque_constant = 0;
-        nominal_voltage = 0;
-        speed_constant = 0;
-        starting_current = 0;
-        terminal_resistance = 0;
-        coloumb_friction = 0;
-        viscous_friction = 0;
     }
     PyElectricMotorActuatorInfo(const ElectricMotorActuatorInfo& info) {
         model_type = info.model_type;
@@ -439,22 +410,22 @@ public:
     }
 
     std::string model_type;
-    dReal gear_ratio;
-    dReal assigned_power_rating;
-    dReal max_speed;
-    dReal no_load_speed;
-    dReal stall_torque;
-    dReal max_instantaneous_torque;
+    dReal gear_ratio = 0.0;
+    dReal assigned_power_rating = 0.0;
+    dReal max_speed = 0.0;
+    dReal no_load_speed = 0.0;
+    dReal stall_torque = 0.0;
+    dReal max_instantaneous_torque = 0.0;
     py::list nominal_speed_torque_points, max_speed_torque_points;
-    dReal nominal_torque;
-    dReal rotor_inertia;
-    dReal torque_constant;
-    dReal nominal_voltage;
-    dReal speed_constant;
-    dReal starting_current;
-    dReal terminal_resistance;
-    dReal coloumb_friction;
-    dReal viscous_friction;
+    dReal nominal_torque = 0.0;
+    dReal rotor_inertia = 0.0;
+    dReal torque_constant = 0.0;
+    dReal nominal_voltage = 0.0;
+    dReal speed_constant = 0.0;
+    dReal starting_current = 0.0;
+    dReal terminal_resistance = 0.0;
+    dReal coloumb_friction = 0.0;
+    dReal viscous_friction = 0.0;
 };
 typedef OPENRAVE_SHARED_PTR<PyElectricMotorActuatorInfo> PyElectricMotorActuatorInfoPtr;
 
@@ -462,25 +433,6 @@ class PyJointInfo
 {
 public:
     PyJointInfo() {
-        _type = KinBody::JointNone;
-        _vanchor = toPyVector3(Vector());
-        _vaxes = py::list();
-        _vresolution = toPyVector3(Vector(0.02,0.02,0.02));
-        // As for initial values for vel, accel, and jerk, please see kinbodyjoint.cpp's definition.
-        _vmaxvel = toPyVector3(Vector(10,10,10));
-        _vhardmaxvel = toPyVector3(Vector(0,0,0));
-        _vmaxaccel = toPyVector3(Vector(50,50,50));
-        _vhardmaxaccel = toPyVector3(Vector(0,0,0));
-        _vmaxjerk = toPyVector3(Vector(2e6,2e6,2e6));
-        _vhardmaxjerk = toPyVector3(Vector(0, 0, 0));
-        _vmaxtorque = toPyVector3(Vector(1e5,1e5,1e5));
-        _vmaxinertia = toPyVector3(Vector(1e5,1e5,1e5));
-        _vweights = toPyVector3(Vector(1,1,1));
-        _voffsets = toPyVector3(Vector(0,0,0));
-        _vlowerlimit = toPyVector3(Vector(0,0,0));
-        _vupperlimit = toPyVector3(Vector(0,0,0));
-        _bIsCircular = py::list();
-        _bIsActive = true;
     }
 
     PyJointInfo(const KinBody::JointInfo& info, PyEnvironmentBasePtr pyenv) {
@@ -511,7 +463,7 @@ public:
         _trajfollow = py::to_object(toPyTrajectory(info._trajfollow, pyenv));
         FOREACHC(itmimic, info._vmimic) {
             if( !*itmimic ) {
-                _vmimic.append(object());
+                _vmimic.append(py::none_());
             }
             else {
                 py::list oequations;
@@ -722,16 +674,32 @@ public:
         }
         return pinfo;
     }
-    KinBody::JointType _type;
-    object _name;
-    object _linkname0, _linkname1;
-    object _vanchor, _vaxes, _vcurrentvalues, _vresolution, _vmaxvel, _vhardmaxvel, _vmaxaccel, _vhardmaxaccel, _vmaxjerk, _vhardmaxjerk, _vmaxtorque, _vmaxinertia, _vweights, _voffsets, _vlowerlimit, _vupperlimit;
-    object _trajfollow;
+
+    KinBody::JointType _type = KinBody::JointNone;
+    object _name = py::none_();
+    object _linkname0 = py::none_(), _linkname1 = py::none_();
+    object _vanchor = toPyVector3(Vector());
+    object _vaxes = py::list();
+    object _vcurrentvalues = py::none_();
+    object _vresolution = toPyVector3(Vector(0.02,0.02,0.02));
+    object _vmaxvel = toPyVector3(Vector(10,10,10));
+    object _vhardmaxvel = toPyVector3(Vector(0,0,0));
+    object _vmaxaccel = toPyVector3(Vector(50,50,50));
+    object _vhardmaxaccel = toPyVector3(Vector(0,0,0));
+    object _vmaxjerk = toPyVector3(Vector(2e6,2e6,2e6));
+    object _vhardmaxjerk= toPyVector3(Vector(0, 0, 0));
+    object _vmaxtorque = toPyVector3(Vector(1e5,1e5,1e5));
+    object _vmaxinertia = toPyVector3(Vector(1e5,1e5,1e5));
+    object _vweights = toPyVector3(Vector(1,1,1));
+    object _voffsets = toPyVector3(Vector(0,0,0));
+    object _vlowerlimit = toPyVector3(Vector(0,0,0));
+    object _vupperlimit = toPyVector3(Vector(0,0,0));
+    object _trajfollow = py::none_();
     PyElectricMotorActuatorInfoPtr _infoElectricMotor;
     py::list _vmimic;
     py::dict _mapFloatParameters, _mapIntParameters, _mapStringParameters;
-    object _bIsCircular;
-    bool _bIsActive;
+    object _bIsCircular = py::list();
+    bool _bIsActive = true;
 };
 
 PyJointInfoPtr toPyJointInfo(const KinBody::JointInfo& jointinfo, PyEnvironmentBasePtr pyenv)
@@ -866,7 +834,7 @@ public:
             if( _pgeometry->ComputeInnerEmptyVolume(tInnerEmptyVolume, abInnerEmptyExtents) ) {
                 return py::make_tuple(ReturnTransform(tInnerEmptyVolume), toPyVector3(abInnerEmptyExtents));
             }
-            return py::make_tuple(object(), object());
+            return py::make_tuple(py::none_(), py::none_());
         }
         bool __eq__(OPENRAVE_SHARED_PTR<PyGeometry> p) {
             return !!p && _pgeometry == p->_pgeometry;
@@ -939,7 +907,7 @@ public:
     object GetCollisionData() {
         return toPyTriMesh(_plink->GetCollisionData());
     }
-    object ComputeLocalAABB() const { // TODO object otransform=object()
+    object ComputeLocalAABB() const { // TODO object otransform=py::none_()
         //if( IS_PYTHONOBJECT_NONE(otransform) ) {
         return toPyAABB(_plink->ComputeLocalAABB());
     }
@@ -1118,7 +1086,7 @@ public:
         return toPyArray<dReal,6>(v);
     }
 
-    object GetFloatParameters(object oname=object(), int index=-1) const {
+    object GetFloatParameters(object oname=py::none_(), int index=-1) const {
         return GetCustomParameters(_plink->GetFloatParameters(), oname, index);
     }
 
@@ -1127,7 +1095,7 @@ public:
         _plink->SetFloatParameters(key,ExtractArray<dReal>(oparameters));
     }
 
-    object GetIntParameters(object oname=object(), int index=-1) const {
+    object GetIntParameters(object oname=py::none_(), int index=-1) const {
         return GetCustomParameters(_plink->GetIntParameters(), oname, index);
     }
 
@@ -1136,7 +1104,7 @@ public:
         _plink->SetIntParameters(key,ExtractArray<int>(oparameters));
     }
 
-    object GetStringParameters(object oname=object()) const
+    object GetStringParameters(object oname=py::none_()) const
     {
         if( IS_PYTHONOBJECT_NONE(oname) ) {
             py::dict oparameters;
@@ -1150,7 +1118,7 @@ public:
         if( it != _plink->GetStringParameters().end() ) {
             return ConvertStringToUnicode(it->second);
         }
-        return py::object();
+        return py::none_();
     }
 
     void SetStringParameters(const std::string& key, object ovalue)
@@ -1214,7 +1182,7 @@ public:
     bool IsMimic(int iaxis=-1) {
         return _pjoint->IsMimic(iaxis);
     }
-    string GetMimicEquation(int iaxis=0, int itype=0, const std::string& format="") {
+    std::string GetMimicEquation(int iaxis=0, int itype=0, const std::string& format="") {
         return _pjoint->GetMimicEquation(iaxis,itype,format);
     }
     object GetMimicDOFIndices(int iaxis=0) {
@@ -1289,7 +1257,7 @@ public:
         return _pjoint->GetDOF();
     }
     object GetValues() const {
-        vector<dReal> values;
+        std::vector<dReal> values;
         _pjoint->GetValues(values);
         return toPyArray(values);
     }
@@ -1297,7 +1265,7 @@ public:
         return _pjoint->GetValue(iaxis);
     }
     object GetVelocities() const {
-        vector<dReal> values;
+        std::vector<dReal> values;
         _pjoint->GetVelocities(values);
         return toPyArray(values);
     }
@@ -1331,42 +1299,42 @@ public:
     }
 
     object GetLimits() const {
-        vector<dReal> lower, upper;
+        std::vector<dReal> lower, upper;
         _pjoint->GetLimits(lower,upper);
         return py::make_tuple(toPyArray(lower),toPyArray(upper));
     }
     object GetVelocityLimits() const {
-        vector<dReal> vlower,vupper;
+        std::vector<dReal> vlower,vupper;
         _pjoint->GetVelocityLimits(vlower,vupper);
         return py::make_tuple(toPyArray(vlower),toPyArray(vupper));
     }
     object GetAccelerationLimits() const {
-        vector<dReal> v;
+        std::vector<dReal> v;
         _pjoint->GetAccelerationLimits(v);
         return toPyArray(v);
     }
     object GetJerkLimits() const {
-        vector<dReal> v;
+        std::vector<dReal> v;
         _pjoint->GetJerkLimits(v);
         return toPyArray(v);
     }
     object GetHardVelocityLimits() const {
-        vector<dReal> v;
+        std::vector<dReal> v;
         _pjoint->GetHardVelocityLimits(v);
         return toPyArray(v);
     }
     object GetHardAccelerationLimits() const {
-        vector<dReal> v;
+        std::vector<dReal> v;
         _pjoint->GetHardAccelerationLimits(v);
         return toPyArray(v);
     }
     object GetHardJerkLimits() const {
-        vector<dReal> v;
+        std::vector<dReal> v;
         _pjoint->GetHardJerkLimits(v);
         return toPyArray(v);
     }
     object GetTorqueLimits() const {
-        vector<dReal> v;
+        std::vector<dReal> v;
         _pjoint->GetTorqueLimits(v);
         return toPyArray(v);
     }
@@ -1378,57 +1346,57 @@ public:
         _pjoint->SetWrapOffset(offset,iaxis);
     }
     void SetLimits(object olower, object oupper) {
-        vector<dReal> vlower = ExtractArray<dReal>(olower);
-        vector<dReal> vupper = ExtractArray<dReal>(oupper);
+        std::vector<dReal> vlower = ExtractArray<dReal>(olower);
+        std::vector<dReal> vupper = ExtractArray<dReal>(oupper);
         if(( vlower.size() != vupper.size()) ||( (int)vlower.size() != _pjoint->GetDOF()) ) {
             throw openrave_exception(_("limits are wrong dimensions"));
         }
         _pjoint->SetLimits(vlower,vupper);
     }
     void SetVelocityLimits(object omaxlimits) {
-        vector<dReal> vmaxlimits = ExtractArray<dReal>(omaxlimits);
+        std::vector<dReal> vmaxlimits = ExtractArray<dReal>(omaxlimits);
         if( (int)vmaxlimits.size() != _pjoint->GetDOF() ) {
             throw openrave_exception(_("limits are wrong dimensions"));
         }
         _pjoint->SetVelocityLimits(vmaxlimits);
     }
     void SetAccelerationLimits(object omaxlimits) {
-        vector<dReal> vmaxlimits = ExtractArray<dReal>(omaxlimits);
+        std::vector<dReal> vmaxlimits = ExtractArray<dReal>(omaxlimits);
         if( (int)vmaxlimits.size() != _pjoint->GetDOF() ) {
             throw openrave_exception(_("limits are wrong dimensions"));
         }
         _pjoint->SetAccelerationLimits(vmaxlimits);
     }
     void SetJerkLimits(object omaxlimits) {
-        vector<dReal> vmaxlimits = ExtractArray<dReal>(omaxlimits);
+        std::vector<dReal> vmaxlimits = ExtractArray<dReal>(omaxlimits);
         if( (int)vmaxlimits.size() != _pjoint->GetDOF() ) {
             throw openrave_exception(_("limits are wrong dimensions"));
         }
         _pjoint->SetJerkLimits(vmaxlimits);
     }
     void SetHardVelocityLimits(object omaxlimits) {
-        vector<dReal> vmaxlimits = ExtractArray<dReal>(omaxlimits);
+        std::vector<dReal> vmaxlimits = ExtractArray<dReal>(omaxlimits);
         if( (int)vmaxlimits.size() != _pjoint->GetDOF() ) {
             throw openrave_exception(_("limits are wrong dimensions"));
         }
         _pjoint->SetHardVelocityLimits(vmaxlimits);
     }
     void SetHardAccelerationLimits(object omaxlimits) {
-        vector<dReal> vmaxlimits = ExtractArray<dReal>(omaxlimits);
+        std::vector<dReal> vmaxlimits = ExtractArray<dReal>(omaxlimits);
         if( (int)vmaxlimits.size() != _pjoint->GetDOF() ) {
             throw openrave_exception(_("limits are wrong dimensions"));
         }
         _pjoint->SetHardAccelerationLimits(vmaxlimits);
     }
     void SetHardJerkLimits(object omaxlimits) {
-        vector<dReal> vmaxlimits = ExtractArray<dReal>(omaxlimits);
+        std::vector<dReal> vmaxlimits = ExtractArray<dReal>(omaxlimits);
         if( (int)vmaxlimits.size() != _pjoint->GetDOF() ) {
             throw openrave_exception(_("limits are wrong dimensions"));
         }
         _pjoint->SetHardJerkLimits(vmaxlimits);
     }
     void SetTorqueLimits(object omaxlimits) {
-        vector<dReal> vmaxlimits = ExtractArray<dReal>(omaxlimits);
+        std::vector<dReal> vmaxlimits = ExtractArray<dReal>(omaxlimits);
         if( (int)vmaxlimits.size() != _pjoint->GetDOF() ) {
             throw openrave_exception(_("limits are wrong dimensions"));
         }
@@ -1436,7 +1404,7 @@ public:
     }
 
     object GetResolutions() const {
-        vector<dReal> resolutions;
+        std::vector<dReal> resolutions;
         _pjoint->GetResolutions(resolutions);
         return toPyArray(resolutions);
     }
@@ -1448,7 +1416,7 @@ public:
     }
 
     object GetWeights() const {
-        vector<dReal> weights;
+        std::vector<dReal> weights;
         _pjoint->GetWeights(weights);
         return toPyArray(weights);
     }
@@ -1460,8 +1428,8 @@ public:
     }
 
     object SubtractValues(object ovalues0, object ovalues1) {
-        vector<dReal> values0 = ExtractArray<dReal>(ovalues0);
-        vector<dReal> values1 = ExtractArray<dReal>(ovalues1);
+        std::vector<dReal> values0 = ExtractArray<dReal>(ovalues0);
+        std::vector<dReal> values1 = ExtractArray<dReal>(ovalues1);
         BOOST_ASSERT((int)values0.size() == GetDOF() );
         BOOST_ASSERT((int)values1.size() == GetDOF() );
         _pjoint->SubtractValues(values0,values1);
@@ -1473,11 +1441,11 @@ public:
     }
 
     void AddTorque(object otorques) {
-        vector<dReal> vtorques = ExtractArray<dReal>(otorques);
+        std::vector<dReal> vtorques = ExtractArray<dReal>(otorques);
         return _pjoint->AddTorque(vtorques);
     }
 
-    object GetFloatParameters(object oname=object(), int index=-1) const {
+    object GetFloatParameters(object oname=py::none_(), int index=-1) const {
         return GetCustomParameters(_pjoint->GetFloatParameters(), oname, index);
     }
 
@@ -1486,7 +1454,7 @@ public:
         _pjoint->SetFloatParameters(key,ExtractArray<dReal>(oparameters));
     }
 
-    object GetIntParameters(object oname=object(), int index=-1) const {
+    object GetIntParameters(object oname=py::none_(), int index=-1) const {
         return GetCustomParameters(_pjoint->GetIntParameters(), oname, index);
     }
 
@@ -1495,7 +1463,7 @@ public:
         _pjoint->SetIntParameters(key,ExtractArray<int>(oparameters));
     }
 
-    object GetStringParameters(object oname=object()) const {
+    object GetStringParameters(object oname=py::none_()) const {
         if( IS_PYTHONOBJECT_NONE(oname) ) {
             py::dict oparameters;
             FOREACHC(it, _pjoint->GetStringParameters()) {
@@ -1508,7 +1476,7 @@ public:
         if( it != _pjoint->GetStringParameters().end() ) {
             return ConvertStringToUnicode(it->second);
         }
-        return py::object();
+        return py::none_();
     }
 
     void SetStringParameters(const std::string& key, object ovalue)
@@ -1584,7 +1552,7 @@ public:
     object GetBody() const {
         KinBodyPtr pbody = _state.GetBody();
         if( !pbody ) {
-            return py::object();
+            return py::none_();
         }
         if( pbody->IsRobot() ) {
             return py::to_object(openravepy::toPyRobot(RaveInterfaceCast<RobotBase>(pbody),_pyenv));
@@ -1653,13 +1621,13 @@ public:
         return _pdata->Lock(bDoLock);
     }
 
-    string __repr__() {
+    std::string __repr__() {
         return boost::str(boost::format("RaveGetEnvironment(%d).GetKinBody('%s').GetManageData()")%RaveGetEnvironmentId(_pdata->GetOffsetLink()->GetParent()->GetEnv())%_pdata->GetOffsetLink()->GetParent()->GetName());
     }
-    string __str__() {
+    std::string __str__() {
         KinBody::LinkPtr plink = _pdata->GetOffsetLink();
         SensorSystemBasePtr psystem = _pdata->GetSystem();
-        string systemname = !psystem ? "(NONE)" : psystem->GetXMLId();
+        std::string systemname = !psystem ? "(NONE)" : psystem->GetXMLId();
         return boost::str(boost::format("<managedata:%s, parent=%s:%s>")%systemname%plink->GetParent()->GetName()%plink->GetName());
     }
     object __unicode__() {
@@ -2162,7 +2130,7 @@ object PyKinBody::GetLinks(object oindices) const
 object PyKinBody::GetLink(const std::string& linkname) const
 {
     KinBody::LinkPtr plink = _pbody->GetLink(linkname);
-    return !plink ? object() : py::to_object(PyLinkPtr(new PyLink(plink,GetEnv())));
+    return !plink ? py::none_() : py::to_object(PyLinkPtr(new PyLink(plink,GetEnv())));
 }
 
 object PyKinBody::GetJoints() const
@@ -2263,13 +2231,13 @@ int PyKinBody::GetJointIndex(const std::string& jointname) const
 object PyKinBody::GetJoint(const std::string& jointname) const
 {
     KinBody::JointPtr pjoint = _pbody->GetJoint(jointname);
-    return !pjoint ? object() : py::to_object(PyJointPtr(new PyJoint(pjoint,GetEnv())));
+    return !pjoint ? py::none_() : py::to_object(PyJointPtr(new PyJoint(pjoint,GetEnv())));
 }
 
 object PyKinBody::GetJointFromDOFIndex(int dofindex) const
 {
     KinBody::JointPtr pjoint = _pbody->GetJointFromDOFIndex(dofindex);
-    return !pjoint ? object() : py::to_object(PyJointPtr(new PyJoint(pjoint,GetEnv())));
+    return !pjoint ? py::none_() : py::to_object(PyJointPtr(new PyJoint(pjoint,GetEnv())));
 }
 
 object PyKinBody::GetTransform() const {
@@ -3016,7 +2984,7 @@ object PyKinBody::GetAdjacentLinks() const
 object PyKinBody::GetManageData() const
 {
     KinBody::ManageDataPtr pdata = _pbody->GetManageData();
-    return !pdata ? object() : py::to_object(PyManageDataPtr(new PyManageData(pdata,_pyenv)));
+    return !pdata ? py::none_() : py::to_object(PyManageDataPtr(new PyManageData(pdata,_pyenv)));
 }
 int PyKinBody::GetUpdateStamp() const
 {
@@ -3025,7 +2993,7 @@ int PyKinBody::GetUpdateStamp() const
 
 string PyKinBody::serialize(int options) const
 {
-    stringstream ss;
+    std::stringstream ss;
     ss << std::setprecision(std::numeric_limits<dReal>::digits10+1);     /// have to do this or otherwise precision gets lost
     _pbody->serialize(ss,options);
     return ss.str();
@@ -3088,7 +3056,7 @@ void PyKinBody::__exit__(object type, object value, object traceback)
 object toPyKinBodyLink(KinBody::LinkPtr plink, PyEnvironmentBasePtr pyenv)
 {
     if( !plink ) {
-        return py::object();
+        return py::none_();
     }
     return py::to_object(PyLinkPtr(new PyLink(plink,pyenv)));
 }
@@ -3100,13 +3068,13 @@ object toPyKinBodyLink(KinBody::LinkPtr plink, object opyenv)
         // call object toPyKinBodyLink(KinBody::LinkPtr plink, PyEnvironmentBasePtr pyenv)
         return toPyKinBodyLink(plink, (PyEnvironmentBasePtr)pyenv);
     }
-    return py::object();
+    return py::none_();
 }
 
 object toPyKinBodyJoint(KinBody::JointPtr pjoint, PyEnvironmentBasePtr pyenv)
 {
     if( !pjoint ) {
-        return py::object();
+        return py::none_();
     }
     return py::to_object(PyJointPtr(new PyJoint(pjoint,pyenv)));
 }
@@ -3201,7 +3169,7 @@ object toPyKinBody(KinBodyPtr pkinbody, object opyenv)
     if( pyenv.check() ) {
         return py::to_object(toPyKinBody(pkinbody,(PyEnvironmentBasePtr)pyenv));
     }
-    return py::object();
+    return py::none_();
 }
 
 PyKinBodyPtr RaveCreateKinBody(PyEnvironmentBasePtr pyenv, const std::string& name)
@@ -3240,7 +3208,7 @@ public:
             // old format
             r._filenamerender = state[6];
             r._filenamecollision = state[7];
-            r._name = object();
+            r._name = py::none_();
             r._vRenderScale = state[8];
             r._vCollisionScale = state[9];
             r._fTransparency = py::extract<float>(state[10]);
@@ -3446,7 +3414,7 @@ void init_openravepy_kinbody()
     .def("GetBody",&PyStateRestoreContextBase::GetBody,DOXY_FN(KinBody::KinBodyStateSaver, GetBody))
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
     .def("Restore",&PyStateRestoreContextBase::Restore,
-        "body"_a = py::object(),
+        "body"_a = nullptr,
         DOXY_FN(KinBody::KinBodyStateSaver, Restore)
     )
 #else
@@ -3503,9 +3471,55 @@ void init_openravepy_kinbody()
                                        .def_readwrite("gear_ratio",&PyElectricMotorActuatorInfo::gear_ratio)
                                        .def_readwrite("coloumb_friction",&PyElectricMotorActuatorInfo::coloumb_friction)
                                        .def_readwrite("viscous_friction",&PyElectricMotorActuatorInfo::viscous_friction)
-#ifndef USE_PYBIND11_PYTHON_BINDINGS
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+                                       .def(py::pickle(
+                                        [](const PyElectricMotorActuatorInfo& pyinfo) {
+                                            return py::make_tuple(pyinfo.gear_ratio,
+                                                pyinfo.assigned_power_rating,
+                                                pyinfo.max_speed,
+                                                pyinfo.no_load_speed,
+                                                py::make_tuple(pyinfo.stall_torque, pyinfo.max_instantaneous_torque),
+                                                py::make_tuple(pyinfo.nominal_speed_torque_points, pyinfo.max_speed_torque_points),
+                                                pyinfo.nominal_torque,
+                                                pyinfo.rotor_inertia,
+                                                pyinfo.torque_constant,
+                                                pyinfo.nominal_voltage,
+                                                pyinfo.speed_constant,
+                                                pyinfo.starting_current,
+                                                pyinfo.terminal_resistance,
+                                                py::make_tuple(pyinfo.coloumb_friction, pyinfo.viscous_friction));
+                                        },
+                                        [](py::tuple state) {
+                                            // __setstate__
+                                            if(state.size() != 14) {
+                                                throw std::runtime_error("Invalid state");
+                                            }
+                                            // TGN: should I convert this to primitive data types?
+                                            // ... the same as I did for PyKinBody::PyGrabbedInfo
+                                            PyElectricMotorActuatorInfo pyinfo;
+                                            pyinfo.gear_ratio = py::extract<dReal>(state[0]);
+                                            pyinfo.assigned_power_rating = py::extract<dReal>(state[1]);
+                                            pyinfo.max_speed = py::extract<dReal>(state[2]);
+                                            pyinfo.no_load_speed = py::extract<dReal>(state[3]);
+                                            pyinfo.stall_torque = py::extract<dReal>(state[4][0]);
+                                            pyinfo.max_instantaneous_torque = py::extract<dReal>(state[4][1]);
+                                            pyinfo.nominal_speed_torque_points = py::list(state[5][0]);
+                                            pyinfo.max_speed_torque_points = py::list(state[5][1]);
+                                            pyinfo.nominal_torque = py::extract<dReal>(state[6]);
+                                            pyinfo.rotor_inertia = py::extract<dReal>(state[7]);
+                                            pyinfo.torque_constant = py::extract<dReal>(state[8]);
+                                            pyinfo.nominal_voltage = py::extract<dReal>(state[9]);
+                                            pyinfo.speed_constant = py::extract<dReal>(state[10]);
+                                            pyinfo.starting_current = py::extract<dReal>(state[11]);
+                                            pyinfo.terminal_resistance = py::extract<dReal>(state[12]);
+                                            pyinfo.coloumb_friction = py::extract<dReal>(state[13][0]);
+                                            pyinfo.viscous_friction = py::extract<dReal>(state[13][1]);
+                                            return pyinfo;
+                                        }
+                                        ))  
+#else
                                        .def_pickle(ElectricMotorActuatorInfo_pickle_suite())
-#endif
+#endif // USE_PYBIND11_PYTHON_BINDINGS
     ;
 
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
@@ -3530,6 +3544,8 @@ void init_openravepy_kinbody()
 
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
     object geometryinfo = class_<PyGeometryInfo, OPENRAVE_SHARED_PTR<PyGeometryInfo> >(m, "GeometryInfo", DOXY_CLASS(KinBody::GeometryInfo))
+                          .def(init<>())
+                          .def(init<const KinBody::GeometryInfo&>(), "info"_a)
 #else
     object geometryinfo = class_<PyGeometryInfo, OPENRAVE_SHARED_PTR<PyGeometryInfo> >("GeometryInfo", DOXY_CLASS(KinBody::GeometryInfo))
 #endif
@@ -3558,7 +3574,7 @@ void init_openravepy_kinbody()
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
                           .def("SerializeJSON", &PyGeometryInfo::SerializeJSON,
                             "unitScale"_a,
-                            "options"_a = py::object(),
+                            "options"_a = nullptr,
                             DOXY_FN(GeometryInfo,SerializeJSON)
                           )
 #else
@@ -3633,13 +3649,79 @@ void init_openravepy_kinbody()
                        .def_readwrite("_bIsCircular",&PyJointInfo::_bIsCircular)
                        .def_readwrite("_bIsActive",&PyJointInfo::_bIsActive)
                        .def_readwrite("_infoElectricMotor", &PyJointInfo::_infoElectricMotor)
-#ifndef USE_PYBIND11_PYTHON_BINDINGS
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+                       // TGN: can simplify in future using 
+                       .def(py::pickle(
+                        [](const PyJointInfo &pyinfo) {
+                            // __getstate__
+                            /* Return a tuple that fully encodes the state of the object */
+                            return py::make_tuple(
+                                py::make_tuple((int)pyinfo._type, pyinfo._name, pyinfo._linkname0, pyinfo._linkname1, pyinfo._vanchor, pyinfo._vaxes, pyinfo._vcurrentvalues),
+                                py::make_tuple(pyinfo._vresolution, pyinfo._vmaxvel, pyinfo._vhardmaxvel, pyinfo._vmaxaccel, pyinfo._vmaxtorque, pyinfo._vweights, pyinfo._voffsets, pyinfo._vlowerlimit, pyinfo._vupperlimit),
+                                py::make_tuple(pyinfo._trajfollow, pyinfo._vmimic, pyinfo._mapFloatParameters, pyinfo._mapIntParameters, pyinfo._bIsCircular, pyinfo._bIsActive, pyinfo._mapStringParameters, pyinfo._infoElectricMotor, pyinfo._vmaxinertia, pyinfo._vmaxjerk, pyinfo._vhardmaxaccel, pyinfo._vhardmaxjerk)
+                            );
+                        },
+                        [](py::tuple state) {
+                            // __setstate__
+                            if (state.size() != 3) {
+                                throw std::runtime_error("Invalid state!");
+                            }
+                            /* Create a new C++ instance */
+                            PyJointInfo pyinfo;
+                            /* Assign any additional state */
+                            pyinfo._type = (KinBody::JointType)(int)py::extract<int>(state[0][0]);
+                            pyinfo._name = state[0][1];
+                            pyinfo._linkname0 = state[0][2];
+                            pyinfo._linkname1 = state[0][3];
+                            pyinfo._vanchor = state[0][4];
+                            pyinfo._vaxes = state[0][5];
+                            pyinfo._vcurrentvalues = state[0][6];
+                            pyinfo._vresolution = state[1][0];
+                            pyinfo._vmaxvel = state[1][1];
+                            pyinfo._vhardmaxvel = state[1][2];
+                            pyinfo._vmaxaccel = state[1][3];
+                            pyinfo._vmaxtorque = state[1][4];
+                            pyinfo._vweights = state[1][5];
+                            pyinfo._voffsets = state[1][6];
+                            pyinfo._vlowerlimit = state[1][7];
+                            pyinfo._vupperlimit = state[1][8];
+                            pyinfo._trajfollow = state[2][0];
+                            int num2 = len(extract<py::object>(state[2])); // same as state[2].cast<py::object>()
+                            pyinfo._vmimic = py::list(state[2][1]);
+                            pyinfo._mapFloatParameters = py::dict(state[2][2]);
+                            pyinfo._mapIntParameters = py::dict(state[2][3]);
+                            pyinfo._bIsCircular = state[2][4];
+                            pyinfo._bIsActive = py::extract<bool>(state[2][5]);
+                            if( num2 > 6 ) {
+                                pyinfo._mapStringParameters = py::dict(state[2][6]);
+                                if( num2 > 7 ) {
+                                    pyinfo._infoElectricMotor = py::extract<PyElectricMotorActuatorInfoPtr>(state[2][7]);
+                                    if( num2 > 8 ) {
+                                        pyinfo._vmaxinertia = state[2][8];
+                                        if( num2 > 9 ) {
+                                            pyinfo._vmaxjerk = state[2][9];
+                                            if( num2 > 10 ) {
+                                                pyinfo._vhardmaxaccel = state[2][10];
+                                                if( num2 > 11 ) {
+                                                    pyinfo._vhardmaxjerk = state[2][11];
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            return pyinfo;
+                        }
+                        ))
+#else
                        .def_pickle(JointInfo_pickle_suite())
 #endif
     ;
 
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
     object grabbedinfo = class_<PyKinBody::PyGrabbedInfo, OPENRAVE_SHARED_PTR<PyKinBody::PyGrabbedInfo> >(m, "GrabbedInfo", DOXY_CLASS(KinBody::GrabbedInfo))
+                         .def(init<>())
+                         .def(init<const RobotBase::GrabbedInfo&>(), "info"_a)
 #else
     object grabbedinfo = class_<PyKinBody::PyGrabbedInfo, OPENRAVE_SHARED_PTR<PyKinBody::PyGrabbedInfo> >("GrabbedInfo", DOXY_CLASS(KinBody::GrabbedInfo))
 #endif
@@ -3649,7 +3731,33 @@ void init_openravepy_kinbody()
                          .def_readwrite("_setRobotLinksToIgnore",&PyKinBody::PyGrabbedInfo::_setRobotLinksToIgnore)
                          .def("__str__",&PyKinBody::PyGrabbedInfo::__str__)
                          .def("__unicode__",&PyKinBody::PyGrabbedInfo::__unicode__)
-#ifndef USE_PYBIND11_PYTHON_BINDINGS
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+                         // https://pybind11.readthedocs.io/en/stable/advanced/classes.html#pickling-support
+                         .def(py::pickle(
+                            // __getstate__
+                            [](const PyKinBody::PyGrabbedInfo &r) {
+                                _RAVE_DISPLAY(std::cout << "__getstate__ of PyKinBody::PyGrabbedInfo";);
+                                /* Return a tuple that fully encodes the state of the object */
+                                return py::make_tuple(r._grabbedname, r._robotlinkname, r._trelative, r._setRobotLinksToIgnore);
+                            },
+                            // __setstate__
+                            [](py::tuple state) {
+                                _RAVE_DISPLAY(std::cout << "__setstate__ of PyKinBody::PyGrabbedInfo";);
+                                if (state.size() != 4) {
+                                    throw std::runtime_error("Invalid state!");
+                                }
+                                /* Create a new C++ instance */
+                                PyKinBody::PyGrabbedInfo r;
+                                /* Assign any additional state */
+                                /* Similar to GrabbedInfo_pickle_suite above */
+                                r._grabbedname = extract<std::string>(state[0]);
+                                r._robotlinkname = extract<std::string>(state[1]);
+                                r._trelative = state[2];
+                                r._setRobotLinksToIgnore = extract<std::vector<int>>(state[3]);
+                                return r;
+                            }
+                         ))
+#else
                          .def_pickle(GrabbedInfo_pickle_suite())
 #endif
     ;
@@ -3789,7 +3897,7 @@ void init_openravepy_kinbody()
                         .def("SetDOFLimits", &PyKinBody::SetDOFLimits,
                             "lower"_a,
                             "upper"_a,
-                            "indices"_a = py::object(),
+                            "indices"_a = nullptr,
                             DOXY_FN(KinBody, SetDOFLimits)
                         )
 #else
@@ -3841,7 +3949,7 @@ void init_openravepy_kinbody()
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
                         .def("SetLinkTransformations",&PyKinBody::SetLinkTransformations,
                             "transforms"_a,
-                            "doflastsetvalues"_a = py::object(),
+                            "doflastsetvalues"_a = nullptr,
                             DOXY_FN(KinBody,SetLinkTransformations)
                         )
 #else
@@ -3858,7 +3966,7 @@ void init_openravepy_kinbody()
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
                         .def("GetLinkAccelerations", &PyKinBody::GetLinkAccelerations,
                             "dofaccelerations"_a,
-                            "externalaccelerations"_a = py::object(),
+                            "externalaccelerations"_a = nullptr,
                             DOXY_FN(KinBody,GetLinkAccelerations)
                         )
 #else
@@ -3908,7 +4016,7 @@ void init_openravepy_kinbody()
                         .def("SubtractDOFValues", &PyKinBody::SubtractDOFValues,
                             "values0"_a,
                             "values1"_a,
-                            "indices"_a = py::object(),
+                            "indices"_a = nullptr,
                             DOXY_FN(KinBody,SubtractDOFValues)
                         )
 #else
@@ -3922,7 +4030,7 @@ void init_openravepy_kinbody()
                         .def("ComputeJacobianTranslation", &PyKinBody::ComputeJacobianTranslation,
                             "linkindex"_a,
                             "position"_a,
-                            "indices"_a = py::object(),
+                            "indices"_a = nullptr,
                             DOXY_FN(KinBody,ComputeJacobianTranslation)
                         )
 #else
@@ -3931,7 +4039,7 @@ void init_openravepy_kinbody()
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
                         .def("ComputeJacobianAxisAngle", &PyKinBody::ComputeJacobianAxisAngle,
                             "linkindex"_a,
-                            "indices"_a = py::object(),
+                            "indices"_a = nullptr,
                             DOXY_FN(KinBody,ComputeJacobianAxisAngle)
                         )
 #else
@@ -3954,7 +4062,7 @@ void init_openravepy_kinbody()
                         .def("ComputeHessianTranslation", &PyKinBody::ComputeHessianTranslation,
                             "linkindex"_a,
                             "position"_a,
-                            "indices"_a = py::object(),
+                            "indices"_a = nullptr,
                             DOXY_FN(KinBody,ComputeHessianTranslation)
                         )
 #else
@@ -3963,7 +4071,7 @@ void init_openravepy_kinbody()
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
                         .def("ComputeHessianAxisAngle", &PyKinBody::ComputeHessianAxisAngle,
                             "linkindex"_a,
-                            "indices"_a = py::object(),
+                            "indices"_a = nullptr,
                             DOXY_FN(KinBody,ComputeHessianAxisAngle)
                         )
 #else
@@ -3972,7 +4080,7 @@ void init_openravepy_kinbody()
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
                         .def("ComputeInverseDynamics", &PyKinBody::ComputeInverseDynamics,
                             "dofaccelerations"_a,
-                            "externalforcetorque"_a = py::object(),
+                            "externalforcetorque"_a = nullptr,
                             "returncomponents"_a = false,
                             sComputeInverseDynamicsDoc.c_str()
                         )
@@ -3983,8 +4091,8 @@ void init_openravepy_kinbody()
                         .def("GetSelfCollisionChecker", &PyKinBody::GetSelfCollisionChecker, /*PY_ARGS("collisionchecker")*/ DOXY_FN(KinBody,GetSelfCollisionChecker))
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
                         .def("CheckSelfCollision", &PyKinBody::CheckSelfCollision,
-                            "report"_a = PyCollisionReportPtr(),
-                            "collisionchecker"_a = PyCollisionCheckerBasePtr(),
+                            "report"_a = nullptr, // PyCollisionReportPtr(),
+                            "collisionchecker"_a = nullptr, // PyCollisionCheckerBasePtr(),
                             DOXY_FN(KinBody,CheckSelfCollision)
                         )
 #else
@@ -4014,7 +4122,7 @@ void init_openravepy_kinbody()
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
                         .def("SetConfigurationValues", &PyKinBody::SetConfigurationValues,
                             "values"_a,
-                            "checklimits"_a = KinBody::CLA_CheckLimits,
+                            "checklimits"_a = (int) KinBody::CLA_CheckLimits,
                             DOXY_FN(KinBody,SetConfigurationValues)
                         )
 #else
@@ -4037,7 +4145,7 @@ void init_openravepy_kinbody()
                         .def("GetKinematicsGeometryHash",&PyKinBody::GetKinematicsGeometryHash, DOXY_FN(KinBody,GetKinematicsGeometryHash))
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
                         .def("CreateKinBodyStateSaver", &PyKinBody::CreateKinBodyStateSaver,
-                            "options"_a = py::object(),
+                            "options"_a = nullptr,
                             "Creates an object that can be entered using 'with' and returns a KinBodyStateSaver"
                         )
 #else
@@ -4051,7 +4159,9 @@ void init_openravepy_kinbody()
         ;
 
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
-        enum_<KinBody::SaveParameters>(m, "SaveParameters" DOXY_ENUM(SaveParameters))
+        // SaveParameters belongs to KinBody, not openravepy._openravepy_.openravepy_int
+        enum_<KinBody::SaveParameters>(kinbody, "SaveParameters", py::arithmetic() DOXY_ENUM(SaveParameters))
+        .export_values()
 #else
         enum_<KinBody::SaveParameters>("SaveParameters" DOXY_ENUM(SaveParameters))
 #endif
@@ -4141,7 +4251,7 @@ void init_openravepy_kinbody()
                          .def("SetVelocity",&PyLink::SetVelocity,DOXY_FN(KinBody::Link,SetVelocity))
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
                          .def("GetFloatParameters", &PyLink::GetFloatParameters,
-                            "name"_a = py::object(),
+                            "name"_a = nullptr,
                             "index"_a = -1,
                             DOXY_FN(KinBody::Link,GetFloatParameters)
                         )
@@ -4151,7 +4261,7 @@ void init_openravepy_kinbody()
                          .def("SetFloatParameters",&PyLink::SetFloatParameters,DOXY_FN(KinBody::Link,SetFloatParameters))
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
                          .def("GetIntParameters", &PyLink::GetIntParameters,
-                            "name"_a = py::object(),
+                            "name"_a = nullptr,
                             "index"_a = -1,
                             DOXY_FN(KinBody::Link,GetIntParameters)
                         )
@@ -4161,7 +4271,7 @@ void init_openravepy_kinbody()
                          .def("SetIntParameters",&PyLink::SetIntParameters,DOXY_FN(KinBody::Link,SetIntParameters))
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
                          .def("GetStringParameters", &PyLink::GetStringParameters,
-                            "name"_a = py::object(),
+                            "name"_a = nullptr,
                             DOXY_FN(KinBody::Link,GetStringParameters)
                         )
 #else
@@ -4179,6 +4289,9 @@ void init_openravepy_kinbody()
                          .def("__ne__",&PyLink::__ne__)
                          .def("__hash__",&PyLink::__hash__)
             ;
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+            link.attr("Geometry") = geometryinfo;
+#endif
             // \deprecated (12/10/18)
             link.attr("GeomType") = geometrytype;
             link.attr("GeometryInfo") = geometryinfo;
@@ -4404,7 +4517,7 @@ void init_openravepy_kinbody()
                           .def("AddTorque",&PyJoint::AddTorque,PY_ARGS("torques") DOXY_FN(KinBody::Joint,AddTorque))
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
                           .def("GetFloatParameters", &PyJoint::GetFloatParameters,
-                            "name"_a = py::object(),
+                            "name"_a = nullptr,
                             "index"_a = -1,
                             DOXY_FN(KinBody::Joint,GetFloatParameters)
                         )
@@ -4414,7 +4527,7 @@ void init_openravepy_kinbody()
                           .def("SetFloatParameters",&PyJoint::SetFloatParameters,DOXY_FN(KinBody::Joint,SetFloatParameters))
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
                           .def("GetIntParameters", &PyJoint::GetIntParameters,
-                            "name"_a = py::object(),
+                            "name"_a = nullptr,
                             "index"_a = -1,
                             DOXY_FN(KinBody::Joint,GetIntParameters)
                         )
@@ -4424,7 +4537,7 @@ void init_openravepy_kinbody()
                           .def("SetIntParameters",&PyJoint::SetIntParameters,DOXY_FN(KinBody::Joint,SetIntParameters))
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
                           .def("GetStringParameters", &PyJoint::GetStringParameters,
-                            "name"_a = py::object(),
+                            "name"_a = nullptr,
                             DOXY_FN(KinBody::Joint, GetStringParameters)
                         )
 #else

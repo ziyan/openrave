@@ -18,7 +18,7 @@
 #define OPENRAVEPY_INTERNAL_CONFIGURATIONSPECIFICATION_H
 
 #define NO_IMPORT_ARRAY
-#include "../openravepy_int.h"
+#include <openravepy/openravepy_int.h>
 
 namespace openravepy {
 using py::object;
@@ -100,10 +100,11 @@ public:
 
     PyConfigurationSpecificationPtr __iadd__(PyConfigurationSpecificationPtr r);
 
-    string __repr__();
-    string __str__();
+    std::string __repr__();
+    std::string __str__();
     object __unicode__();
 
+    // members
     ConfigurationSpecification _spec;
 };
 

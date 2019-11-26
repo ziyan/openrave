@@ -15,13 +15,13 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define NO_IMPORT_ARRAY
-#include "openravepy_kinbody.h"
-#include "include/openravepy_collisionreport.h"
-#include "include/openravepy_controllerbase.h"
-#include "include/openravepy_configurationspecification.h"
-#include "include/openravepy_jointinfo.h"
-#include "include/openravepy_environmentbase.h"
-#include "include/openravepy_iksolverbase.h"
+#include <openravepy/openravepy_kinbody.h>
+#include <openravepy/openravepy_collisionreport.h>
+#include <openravepy/openravepy_controllerbase.h>
+#include <openravepy/openravepy_configurationspecification.h>
+#include <openravepy/openravepy_jointinfo.h>
+#include <openravepy/openravepy_environmentbase.h>
+#include <openravepy/openravepy_iksolverbase.h>
 
 namespace openravepy {
 
@@ -87,12 +87,12 @@ public:
         return pinfo;
     }
 
-    object _name, _sBaseLinkName, _sEffectorLinkName;
-    object _tLocalTool;
-    object _vChuckingDirection;
-    object _vdirection;
+    object _name = py::none_(), _sBaseLinkName = py::none_(), _sEffectorLinkName = py::none_();
+    object _tLocalTool = py::none_();
+    object _vChuckingDirection = py::none_();
+    object _vdirection = py::none_();
     std::string _sIkSolverXMLId;
-    object _vGripperJointNames;
+    object _vGripperJointNames = py::none_();
 };
 
 PyManipulatorInfoPtr toPyManipulatorInfo(const RobotBase::ManipulatorInfo& manipulatorinfo)
@@ -124,9 +124,9 @@ public:
         return pinfo;
     }
 
-    object _name, _linkname;
-    object _trelative;
-    object _sensorname;
+    object _name = py::none_(), _linkname = py::none_();
+    object _trelative = py::none_();
+    object _sensorname = py::none_();
     PySensorGeometryPtr _sensorgeometry;
 };
 
@@ -183,14 +183,14 @@ public:
         return pinfo;
     }
 
-    object _name;
-    object _linkname;
-    object _trelative;
-    object _url;
-    object _linkInfos;
-    object _jointInfos;
-    object _manipulatorInfos;
-    object _attachedSensorInfos;
+    object _name = py::none_();
+    object _linkname = py::none_();
+    object _trelative = py::none_();
+    object _url = py::none_();
+    object _linkInfos = py::none_();
+    object _jointInfos = py::none_();
+    object _manipulatorInfos = py::none_();
+    object _attachedSensorInfos = py::none_();
 
 };
 
@@ -290,18 +290,18 @@ public:
         {
             _pmanip->SetChuckingDirection(ExtractArray<dReal>(ochuckingdirection));
         }
-        object GetGripperJoints() {
+        py::array_int GetGripperJoints() {
             RAVELOG_DEBUG("GetGripperJoints is deprecated, use GetGripperIndices\n");
             return toPyArray(_pmanip->GetGripperIndices());
         }
-        object GetGripperIndices() {
+        py::array_int GetGripperIndices() {
             return toPyArray(_pmanip->GetGripperIndices());
         }
-        object GetArmJoints() {
+        py::array_int GetArmJoints() {
             RAVELOG_DEBUG("GetArmJoints is deprecated, use GetArmIndices\n");
             return toPyArray(_pmanip->GetArmIndices());
         }
-        object GetArmIndices() {
+        py::array_int GetArmIndices() {
             return toPyArray(_pmanip->GetArmIndices());
         }
         object GetArmDOFValues()
@@ -440,7 +440,7 @@ public:
                 else {
                     vector<dReal> solution;
                     if( !_FindIKSolution(ikparam,solution,filteroptions,releasegil) ) {
-                        return py::object();
+                        return py::none_();
                     }
                     return toPyArray(solution);
                 }
@@ -455,7 +455,7 @@ public:
                 else {
                     vector<dReal> solution;
                     if( !_FindIKSolution(ExtractTransform(oparam),solution,filteroptions,releasegil) ) {
-                        return py::object();
+                        return py::none_();
                     }
                     return toPyArray(solution);
                 }
@@ -464,7 +464,7 @@ public:
 
         object FindIKSolution(object oparam, object freeparams, int filteroptions, bool ikreturn=false, bool releasegil=false) const
         {
-            vector<dReal> vfreeparams = ExtractArray<dReal>(freeparams);
+            std::vector<dReal> vfreeparams = ExtractArray<dReal>(freeparams);
             IkParameterization ikparam;
             EnvironmentMutex::scoped_lock lock(openravepy::GetEnvironment(_pyenv)->GetMutex()); // lock just in case since many users call this without locking...
             if( ExtractIkParameterization(oparam,ikparam) ) {
@@ -476,7 +476,7 @@ public:
                 else {
                     vector<dReal> solution;
                     if( !_FindIKSolution(ikparam,vfreeparams,solution,filteroptions,releasegil) ) {
-                        return py::object();
+                        return py::none_();
                     }
                     return toPyArray(solution);
                 }
@@ -491,7 +491,7 @@ public:
                 else {
                     vector<dReal> solution;
                     if( !_FindIKSolution(ExtractTransform(oparam),vfreeparams, solution,filteroptions,releasegil) ) {
-                        return py::object();
+                        return py::none_();
                     }
                     return toPyArray(solution);
                 }
@@ -1580,7 +1580,7 @@ public:
         return new PyStateRestoreContext<PyRobotStateSaverPtr, PyRobotBasePtr>(saver);
     }
 
-    PyStateRestoreContextBase* CreateRobotStateSaver(object options=object()) {
+    PyStateRestoreContextBase* CreateRobotStateSaver(object options=py::none_()) {
         return CreateStateSaver(options);
     }
 
@@ -1654,7 +1654,7 @@ RobotBase::ManipulatorPtr GetRobotManipulator(object o)
 
 object toPyRobotManipulator(RobotBase::ManipulatorPtr pmanip, PyEnvironmentBasePtr pyenv)
 {
-    return !pmanip ? object() : py::to_object(PyRobotBase::PyManipulatorPtr(new PyRobotBase::PyManipulator(pmanip,pyenv)));
+    return !pmanip ? py::none_() : py::to_object(PyRobotBase::PyManipulatorPtr(new PyRobotBase::PyManipulator(pmanip,pyenv)));
 }
 
 PyRobotBasePtr RaveCreateRobot(PyEnvironmentBasePtr pyenv, const std::string& name)
@@ -1926,7 +1926,7 @@ void init_openravepy_robot()
                       .def("CheckLinkSelfCollision", &PyRobotBase::CheckLinkSelfCollision,
                         "linkindex"_a,
                         "linktrans"_a,
-                        "report"_a = PyCollisionReportPtr(),
+                        "report"_a = nullptr, // PyCollisionReportPtr(),
                         DOXY_FN(RobotBase,CheckLinkSelfCollision)
                         )
 #else
@@ -1936,7 +1936,7 @@ void init_openravepy_robot()
                       .def("GetRobotStructureHash",&PyRobotBase::GetRobotStructureHash, DOXY_FN(RobotBase,GetRobotStructureHash))
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
                       .def("CreateRobotStateSaver",&PyRobotBase::CreateRobotStateSaver,
-                        "options"_a = py::object(),
+                        "options"_a = nullptr,
                         "Creates an object that can be entered using 'with' and returns a RobotStateSaver"
                         )
 #else
@@ -2083,7 +2083,7 @@ void init_openravepy_robot()
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
         .def("CheckEndEffectorCollision", pCheckEndEffectorCollision1,
             "transform"_a,
-            "report"_a = PyCollisionReportPtr(),
+            "report"_a = nullptr, // PyCollisionReportPtr(),
             "numredundantsamples"_a = 0,
             DOXY_FN(RobotBase::Manipulator, CheckEndEffectorCollision)
         )
@@ -2095,7 +2095,7 @@ void init_openravepy_robot()
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
         .def("CheckEndEffectorSelfCollision", pCheckEndEffectorSelfCollision1,
             "transform"_a,
-            "report"_a = PyCollisionReportPtr(),
+            "report"_a = nullptr, // PyCollisionReportPtr(),
             "numredundantsamples"_a = 0,
             "ignoreManipulatorLinks"_a = false,
             DOXY_FN(RobotBase::Manipulator,CheckEndEffectorSelfCollision)
@@ -2137,7 +2137,7 @@ void init_openravepy_robot()
         .def("GetStructureHash",&PyRobotBase::PyAttachedSensor::GetStructureHash, DOXY_FN(RobotBase::AttachedSensor,GetStructureHash))
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
         .def("UpdateInfo",&PyRobotBase::PyAttachedSensor::UpdateInfo,
-            "type"_a = SensorBase::ST_Invalid,
+            "type"_a = (int) SensorBase::ST_Invalid,
             DOXY_FN(RobotBase::AttachedSensor, UpdateInfo)
         )
 #else
@@ -2146,7 +2146,7 @@ void init_openravepy_robot()
         .def("GetInfo",&PyRobotBase::PyAttachedSensor::GetInfo, DOXY_FN(RobotBase::AttachedSensor,GetInfo))
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
         .def("UpdateAndGetInfo", &PyRobotBase::PyAttachedSensor::UpdateAndGetInfo,
-            "type"_a = SensorBase::ST_Invalid,
+            "type"_a = (int) SensorBase::ST_Invalid,
             DOXY_FN(RobotBase::AttachedSensor, UpdateAndGetInfo)
         )
 #else
@@ -2197,7 +2197,7 @@ void init_openravepy_robot()
         .def("GetBody",&PyRobotBase::PyRobotStateSaver::GetBody,DOXY_FN(Robot::RobotStateSaver, GetBody))
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
         .def("Restore", &PyRobotBase::PyRobotStateSaver::Restore,
-            "body"_a = PyRobotBasePtr(),
+            "body"_a = nullptr, // PyRobotBasePtr(),
             DOXY_FN(Robot::RobotStateSaver, Restore)
         )
 #else

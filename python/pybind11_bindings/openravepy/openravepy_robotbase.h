@@ -18,10 +18,10 @@
 #define OPENRAVEPY_INTERNAL_ROBOT_H
 
 #define NO_IMPORT_ARRAY
-#include "../openravepy_int.h"
-#include "openravepy_manipulatorinfo.h"
-#include "openravepy_configurationspecification.h"
-#include "openravepy_jointinfo.h"
+#include <openravepy/openravepy_int.h>
+#include <openravepy/openravepy_manipulatorinfo.h>
+#include <openravepy/openravepy_configurationspecification.h>
+#include <openravepy/openravepy_jointinfo.h>
 
 namespace openravepy {
 using py::object;
@@ -941,7 +941,7 @@ public:
         return new PyStateRestoreContext<PyRobotStateSaverPtr, PyRobotBasePtr>(saver);
     }
 
-    PyStateRestoreContextBase* CreateRobotStateSaver(object options=object()) {
+    PyStateRestoreContextBase* CreateRobotStateSaver(object options=py::none_()) {
         return CreateStateSaver(options);
     }
 

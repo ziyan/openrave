@@ -15,27 +15,42 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define NO_IMPORT_ARRAY
-#include "openravepy_int.h"
+#include <openravepy/openravepy_int.h>
+#include <openravepy/openravepy_environmentbase.h>
 
 namespace openravepy {
 
 using py::object;
 using py::extract;
+using py::extract_;
 using py::handle;
 using py::dict;
 using py::enum_;
 using py::class_;
-using py::no_init;
-using py::bases;
 using py::init;
+using py::scope_; // py::object if USE_PYBIND11_PYTHON_BINDINGS
 using py::scope;
 using py::args;
 using py::return_value_policy;
+
+#ifndef USE_PYBIND11_PYTHON_BINDINGS
+using py::no_init;
+using py::bases;
 using py::copy_const_reference;
 using py::docstring_options;
-using py::def;
 using py::pickle_suite;
+using py::manage_new_object;
+using py::def;
+#endif // USE_PYBIND11_PYTHON_BINDINGS
+
 namespace numeric = py::numeric;
+inline void resize_3x3(numeric::array& arr) {
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+    arr.resize({3, 3});
+#else
+    arr.resize(3, 3);
+#endif
+}
 
 class PyCameraIntrinsics
 {
@@ -43,7 +58,7 @@ public:
     PyCameraIntrinsics(const geometry::RaveCameraIntrinsics<float>& intrinsics = geometry::RaveCameraIntrinsics<float>())
     {
         numeric::array arr(py::make_tuple(intrinsics.fx,0,intrinsics.cx,0,intrinsics.fy,intrinsics.cy,0,0,1));
-        arr.resize(3,3);
+        resize_3x3(arr);
         K = arr;
         distortion_model = intrinsics.distortion_model;
         distortion_coeffs = toPyArray(intrinsics.distortion_coeffs);
@@ -52,7 +67,7 @@ public:
     PyCameraIntrinsics(const geometry::RaveCameraIntrinsics<double>& intrinsics)
     {
         numeric::array arr(py::make_tuple(intrinsics.fx,0,intrinsics.cx,0,intrinsics.fy,intrinsics.cy,0,0,1));
-        arr.resize(3,3);
+        resize_3x3(arr);
         K = arr;
         distortion_model = intrinsics.distortion_model;
         distortion_coeffs = toPyArray(intrinsics.distortion_coeffs);
@@ -82,9 +97,9 @@ public:
         intrinsics.focal_length = focal_length;
         return intrinsics;
     }
-    object K;
-    string distortion_model;
-    object distortion_coeffs;
+    object K = py::none_();
+    std::string distortion_model;
+    object distortion_coeffs = py::none_();
     dReal focal_length;
 };
 
@@ -92,10 +107,6 @@ class PyCameraGeomData : public PySensorGeometry
 {
 public:
     PyCameraGeomData() {
-        width = 0;
-        height = 0;
-        measurement_time = 1;
-        gain = 1;
     }
     PyCameraGeomData(OPENRAVE_SHARED_PTR<SensorBase::CameraGeomData const> pgeom) : intrinsics(pgeom->intrinsics)
     {
@@ -127,23 +138,17 @@ public:
 
     std::string hardware_id;
     PyCameraIntrinsics intrinsics;
-    int width, height;
+    int width = 0, height = 0;
     std::string sensor_reference;
     std::string target_region;
-    dReal measurement_time;
-    dReal gain;
+    dReal measurement_time = 1.0;
+    dReal gain = 1.0;
 };
 
 class PyLaserGeomData : public PySensorGeometry
 {
 public:
     PyLaserGeomData() {
-        min_angle = py::make_tuple(0.0, 0.0);
-        max_angle = py::make_tuple(0.0, 0.0);
-        min_range = 0.0;
-        max_range = 0.0;
-        time_increment = 0.0;
-        time_scan = 0.0;
     }
     PyLaserGeomData(OPENRAVE_SHARED_PTR<SensorBase::LaserGeomData const> pgeom)
     {
@@ -172,8 +177,8 @@ public:
         return geom;
     }
 
-    py::tuple min_angle, max_angle, resolution;
-    dReal min_range, max_range, time_increment, time_scan;
+    py::tuple min_angle = py::make_tuple(0.0, 0.0), max_angle = py::make_tuple(0.0, 0.0), resolution;
+    dReal min_range = 0.0, max_range = 0.0, time_increment = 0.0, time_scan = 0.0;
 };
 
 class PyJointEncoderGeomData : public PySensorGeometry
@@ -197,7 +202,7 @@ public:
         return geom;
     }
 
-    object resolution;
+    object resolution = py::none_();
 };
 
 class PyForce6DGeomData : public PySensorGeometry
@@ -223,7 +228,6 @@ class PyIMUGeomData : public PySensorGeometry
 {
 public:
     PyIMUGeomData() {
-        time_measurement = 0.0;
     }
     PyIMUGeomData(OPENRAVE_SHARED_PTR<SensorBase::IMUGeomData const> pgeom)
     {
@@ -240,7 +244,7 @@ public:
         return geom;
     }
 
-    dReal time_measurement;
+    dReal time_measurement = 0.0;
 };
 
 class PyOdometryGeomData : public PySensorGeometry
@@ -271,7 +275,6 @@ class PyTactileGeomData : public PySensorGeometry
 {
 public:
     PyTactileGeomData() {
-        thickness = 0.0;
     }
     PyTactileGeomData(OPENRAVE_SHARED_PTR<SensorBase::TactileGeomData const> pgeom)
     {
@@ -288,21 +291,13 @@ public:
         return geom;
     }
 
-    dReal thickness;
+    dReal thickness = 0.0;
 };
 
 class PyActuatorGeomData : public PySensorGeometry
 {
 public:
     PyActuatorGeomData() {
-        maxtorque = 0.0;
-        maxcurrent = 0.0;
-        nominalcurrent = 0.0;
-        maxvelocity = 0.0;
-        maxacceleration = 0.0;
-        maxjerk = 0.0;
-        staticfriction = 0.0;
-        viscousfriction = 0.0;
     }
     PyActuatorGeomData(OPENRAVE_SHARED_PTR<SensorBase::ActuatorGeomData const> pgeom)
     {
@@ -333,7 +328,7 @@ public:
         return geom;
     }
 
-    dReal maxtorque, maxcurrent, nominalcurrent, maxvelocity, maxacceleration, maxjerk, staticfriction, viscousfriction;
+    dReal maxtorque = 0.0, maxcurrent = 0.0, nominalcurrent = 0.0, maxvelocity = 0.0, maxacceleration = 0.0, maxjerk = 0.0, staticfriction = 0.0, viscousfriction = 0.0;
 };
 
 class PySensorBase : public PyInterfaceBase
@@ -360,7 +355,7 @@ public:
 
         SensorBase::SensorType type;
         uint64_t stamp;
-        object transform;
+        object transform = py::none_();
     };
 
     class PyLaserSensorData : public PySensorData
@@ -376,7 +371,7 @@ public:
         }
         virtual ~PyLaserSensorData() {
         }
-        object positions, ranges, intensity;
+        object positions = py::none_(), ranges = py::none_(), intensity = py::none_();
     };
 
     class PyCameraSensorData : public PySensorData
@@ -406,13 +401,13 @@ public:
             }
             {
                 numeric::array arr(py::make_tuple(pgeom->intrinsics.fx,0,pgeom->intrinsics.cx,0,pgeom->intrinsics.fy,pgeom->intrinsics.cy,0,0,1));
-                arr.resize(3,3);
+                resize_3x3(arr);
                 KK = arr;
             }
         }
         virtual ~PyCameraSensorData() {
         }
-        object imagedata, KK;
+        object imagedata = py::none_(), KK = py::none_();
         PyCameraIntrinsics intrinsics;
     };
 
@@ -431,8 +426,8 @@ public:
         }
         virtual ~PyJointEncoderSensorData() {
         }
-        object encoderValues, encoderVelocity;
-        object resolution;
+        object encoderValues = py::none_(), encoderVelocity = py::none_();
+        object resolution = py::none_();
     };
 
     class PyForce6DSensorData : public PySensorData
@@ -448,7 +443,7 @@ public:
         }
         virtual ~PyForce6DSensorData() {
         }
-        object force, torque;
+        object force = py::none_(), torque = py::none_();
     };
 
     class PyIMUSensorData : public PySensorData
@@ -460,13 +455,13 @@ public:
             angular_velocity = toPyVector3(pdata->angular_velocity);
             linear_acceleration = toPyVector3(pdata->linear_acceleration);
             numeric::array arr = toPyArrayN(&pdata->rotation_covariance[0],pdata->rotation_covariance.size());
-            arr.resize(3,3);
+            resize_3x3(arr);
             rotation_covariance = arr;
             arr = toPyArrayN(&pdata->angular_velocity_covariance[0],pdata->angular_velocity_covariance.size());
-            arr.resize(3,3);
+            resize_3x3(arr);
             angular_velocity_covariance = arr;
             arr = toPyArrayN(&pdata->linear_acceleration_covariance[0],pdata->linear_acceleration_covariance.size());
-            arr.resize(3,3);
+            resize_3x3(arr);
             linear_acceleration_covariance = arr;
         }
         PyIMUSensorData(OPENRAVE_SHARED_PTR<SensorBase::IMUGeomData const> pgeom) : PySensorData(SensorBase::ST_IMU)
@@ -474,7 +469,7 @@ public:
         }
         virtual ~PyIMUSensorData() {
         }
-        object rotation, angular_velocity, linear_acceleration, rotation_covariance, angular_velocity_covariance, linear_acceleration_covariance;
+        object rotation = py::none_(), angular_velocity = py::none_(), linear_acceleration = py::none_(), rotation_covariance = py::none_(), angular_velocity_covariance = py::none_(), linear_acceleration_covariance = py::none_();
     };
 
     class PyOdometrySensorData : public PySensorData
@@ -486,10 +481,10 @@ public:
             linear_velocity = toPyVector3(pdata->linear_velocity);
             angular_velocity = toPyVector3(pdata->angular_velocity);
             numeric::array arr = toPyArrayN(&pdata->pose_covariance[0],pdata->pose_covariance.size());
-            arr.resize(3,3);
+            resize_3x3(arr);
             pose_covariance = arr;
             arr = toPyArrayN(&pdata->velocity_covariance[0],pdata->velocity_covariance.size());
-            arr.resize(3,3);
+            resize_3x3(arr);
             velocity_covariance = arr;
             targetid = pgeom->targetid;
 
@@ -500,7 +495,7 @@ public:
         }
         virtual ~PyOdometrySensorData() {
         }
-        object pose, linear_velocity, angular_velocity, pose_covariance, velocity_covariance;
+        object pose = py::none_(), linear_velocity = py::none_(), angular_velocity = py::none_(), pose_covariance = py::none_(), velocity_covariance = py::none_();
         std::string targetid;
     };
 
@@ -511,7 +506,7 @@ public:
         {
             forces = toPyArray3(pdata->forces);
             numeric::array arr = toPyArrayN(&pdata->force_covariance[0],pdata->force_covariance.size());
-            arr.resize(3,3);
+            resize_3x3(arr);
             force_covariance = arr;
             positions = toPyArray3(pgeom->positions);
             thickness = pgeom->thickness;
@@ -523,7 +518,7 @@ public:
         }
         virtual ~PyTactileSensorData() {
         }
-        object forces, force_covariance, positions;
+        object forces = py::none_(), force_covariance = py::none_(), positions = py::none_();
         dReal thickness;
     };
 
@@ -711,7 +706,7 @@ PyInterfaceBasePtr toPySensor(SensorBasePtr psensor, PyEnvironmentBasePtr pyenv)
 object toPySensorData(SensorBasePtr psensor, PyEnvironmentBasePtr pyenv)
 {
     if( !psensor ) {
-        return py::object();
+        return py::none_();
     }
     return py::to_object(PySensorBase(psensor,pyenv).GetSensorData());
 }
@@ -749,15 +744,37 @@ PyCameraIntrinsicsPtr toPyCameraIntrinsics(const geometry::RaveCameraIntrinsics<
     return PyCameraIntrinsicsPtr(new PyCameraIntrinsics(intrinsics));
 }
 
+#ifndef USE_PYBIND11_PYTHON_BINDINGS
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(Configure_overloads, Configure, 1, 2)
+#endif
 
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+void init_openravepy_sensor(py::module& m)
+#else
 void init_openravepy_sensor()
+#endif
 {
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+    using namespace py::literals; // "..."_a
+#endif
     {
         OPENRAVE_SHARED_PTR<PySensorBase::PySensorData> (PySensorBase::*GetSensorData1)() = &PySensorBase::GetSensorData;
         OPENRAVE_SHARED_PTR<PySensorBase::PySensorData> (PySensorBase::*GetSensorData2)(SensorBase::SensorType) = &PySensorBase::GetSensorData;
-        scope sensor = class_<PySensorBase, OPENRAVE_SHARED_PTR<PySensorBase>, bases<PyInterfaceBase> >("Sensor", DOXY_CLASS(SensorBase), no_init)
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+        scope_ sensor = class_<PySensorBase, OPENRAVE_SHARED_PTR<PySensorBase>, PyInterfaceBase>(m, "Sensor", DOXY_CLASS(SensorBase))
+                        .def(init<SensorBasePtr, PyEnvironmentBasePtr>(), "psensor"_a, "pyenv"_a)
+#else
+        scope_ sensor = class_<PySensorBase, OPENRAVE_SHARED_PTR<PySensorBase>, bases<PyInterfaceBase> >("Sensor", DOXY_CLASS(SensorBase), no_init)
+#endif
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+                       .def("Configure", &PySensorBase::Configure,
+                        "command"_a,
+                        "blocking"_a = false,
+                        DOXY_FN(SensorBase, Configure)
+                        )
+#else   
                        .def("Configure",&PySensorBase::Configure, Configure_overloads(PY_ARGS("command","blocking") DOXY_FN(SensorBase,Configure)))
+#endif
                        .def("SimulationStep",&PySensorBase::SimulationStep, PY_ARGS("timeelapsed") DOXY_FN(SensorBase,SimulationStep))
                        .def("GetSensorData",GetSensorData1, DOXY_FN(SensorBase,GetSensorData))
                        .def("GetSensorData",GetSensorData2, DOXY_FN(SensorBase,GetSensorData))
@@ -775,38 +792,89 @@ void init_openravepy_sensor()
                        .def("__repr__",&PySensorBase::__repr__)
         ;
 
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+        class_<PyCameraIntrinsics, OPENRAVE_SHARED_PTR<PyCameraIntrinsics> >(m, "CameraIntrinsics", DOXY_CLASS(geometry::RaveCameraIntrinsics))
+#else
         class_<PyCameraIntrinsics, OPENRAVE_SHARED_PTR<PyCameraIntrinsics> >("CameraIntrinsics", DOXY_CLASS(geometry::RaveCameraIntrinsics))
+#endif
         .def_readwrite("K",&PyCameraIntrinsics::K)
         .def_readwrite("distortion_model",&PyCameraIntrinsics::distortion_model)
         .def_readwrite("distortion_coeffs",&PyCameraIntrinsics::distortion_coeffs)
         .def_readwrite("focal_length",&PyCameraIntrinsics::focal_length)
         ;
 
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+        // SensorData is inside SensorBase
+        class_<PySensorBase::PySensorData, OPENRAVE_SHARED_PTR<PySensorBase::PySensorData> >(sensor, "SensorData", DOXY_CLASS(SensorBase::SensorData))
+        .def(init<SensorBase::SensorType>(), "type"_a)
+        .def(init<SensorBase::SensorDataPtr>(), "pdata"_a)
+#else
         class_<PySensorBase::PySensorData, OPENRAVE_SHARED_PTR<PySensorBase::PySensorData> >("SensorData", DOXY_CLASS(SensorBase::SensorData),no_init)
+#endif
         .def_readonly("type",&PySensorBase::PySensorData::type)
         .def_readonly("stamp",&PySensorBase::PySensorData::stamp)
         ;
+
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+        // LaserSensorData is inside SensorBase
+        class_<PySensorBase::PyLaserSensorData, OPENRAVE_SHARED_PTR<PySensorBase::PyLaserSensorData>, PySensorBase::PySensorData>(sensor, "LaserSensorData", DOXY_CLASS(SensorBase::LaserSensorData))
+        .def(init<OPENRAVE_SHARED_PTR<SensorBase::LaserGeomData const>, OPENRAVE_SHARED_PTR<SensorBase::LaserSensorData>>(), "pgeom"_a, "pdata"_a)
+        .def(init<OPENRAVE_SHARED_PTR<SensorBase::LaserGeomData const>>(), "pgeom"_a)
+#else
         class_<PySensorBase::PyLaserSensorData, OPENRAVE_SHARED_PTR<PySensorBase::PyLaserSensorData>, bases<PySensorBase::PySensorData> >("LaserSensorData", DOXY_CLASS(SensorBase::LaserSensorData),no_init)
+#endif
         .def_readonly("positions",&PySensorBase::PyLaserSensorData::positions)
         .def_readonly("ranges",&PySensorBase::PyLaserSensorData::ranges)
         .def_readonly("intensity",&PySensorBase::PyLaserSensorData::intensity)
         ;
+
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+        // CameraSensorData is inside SensorBase
+        class_<PySensorBase::PyCameraSensorData, OPENRAVE_SHARED_PTR<PySensorBase::PyCameraSensorData>, PySensorBase::PySensorData>(sensor, "CameraSensorData", DOXY_CLASS(SensorBase::CameraSensorData))
+        .def(init<OPENRAVE_SHARED_PTR<SensorBase::CameraGeomData const>, OPENRAVE_SHARED_PTR<SensorBase::CameraSensorData>>(), "pgeom"_a, "pdata"_a)
+        .def(init<OPENRAVE_SHARED_PTR<SensorBase::CameraGeomData const>>(), "pgeom"_a)
+#else
         class_<PySensorBase::PyCameraSensorData, OPENRAVE_SHARED_PTR<PySensorBase::PyCameraSensorData>, bases<PySensorBase::PySensorData> >("CameraSensorData", DOXY_CLASS(SensorBase::CameraSensorData),no_init)
+#endif
         .def_readonly("transform",&PySensorBase::PyCameraSensorData::transform)
         .def_readonly("imagedata",&PySensorBase::PyCameraSensorData::imagedata)
         .def_readonly("KK",&PySensorBase::PyCameraSensorData::KK)
         .def_readonly("intrinsics",&PySensorBase::PyCameraSensorData::intrinsics)
         ;
+
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+        // JointEncoderSensorData is inside SensorBase
+        class_<PySensorBase::PyJointEncoderSensorData, OPENRAVE_SHARED_PTR<PySensorBase::PyJointEncoderSensorData>, PySensorBase::PySensorData>(sensor, "JointEncoderSensorData", DOXY_CLASS(SensorBase::JointEncoderSensorData))
+        .def(init<OPENRAVE_SHARED_PTR<SensorBase::JointEncoderGeomData const>, OPENRAVE_SHARED_PTR<SensorBase::JointEncoderSensorData>>(), "pgeom"_a, "pdata"_a)
+        .def(init<OPENRAVE_SHARED_PTR<SensorBase::JointEncoderGeomData const>>(), "pgeom"_a)
+#else
         class_<PySensorBase::PyJointEncoderSensorData, OPENRAVE_SHARED_PTR<PySensorBase::PyJointEncoderSensorData>, bases<PySensorBase::PySensorData> >("JointEncoderSensorData", DOXY_CLASS(SensorBase::JointEncoderSensorData),no_init)
+#endif
         .def_readonly("encoderValues",&PySensorBase::PyJointEncoderSensorData::encoderValues)
         .def_readonly("encoderVelocity",&PySensorBase::PyJointEncoderSensorData::encoderVelocity)
         .def_readonly("resolution",&PySensorBase::PyJointEncoderSensorData::resolution)
         ;
+
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+        // Force6DSensorData is inside SensorBase
+        class_<PySensorBase::PyForce6DSensorData, OPENRAVE_SHARED_PTR<PySensorBase::PyForce6DSensorData>, PySensorBase::PySensorData>(sensor, "Force6DSensorData", DOXY_CLASS(SensorBase::Force6DSensorData))
+        .def(init<OPENRAVE_SHARED_PTR<SensorBase::Force6DGeomData const>, OPENRAVE_SHARED_PTR<SensorBase::Force6DSensorData>>(), "pgeom"_a, "pdata"_a)
+        .def(init<OPENRAVE_SHARED_PTR<SensorBase::Force6DGeomData const>>(), "pgeom"_a)
+#else
         class_<PySensorBase::PyForce6DSensorData, OPENRAVE_SHARED_PTR<PySensorBase::PyForce6DSensorData>, bases<PySensorBase::PySensorData> >("Force6DSensorData", DOXY_CLASS(SensorBase::Force6DSensorData),no_init)
+#endif
         .def_readonly("force",&PySensorBase::PyForce6DSensorData::force)
         .def_readonly("torque",&PySensorBase::PyForce6DSensorData::torque)
         ;
+
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+        // IMUSensorData is inside SensorBase
+        class_<PySensorBase::PyIMUSensorData, OPENRAVE_SHARED_PTR<PySensorBase::PyIMUSensorData>, PySensorBase::PySensorData>(sensor, "IMUSensorData", DOXY_CLASS(SensorBase::IMUSensorData))
+        .def(init<OPENRAVE_SHARED_PTR<SensorBase::IMUGeomData const>, OPENRAVE_SHARED_PTR<SensorBase::IMUSensorData>>(), "pgeom"_a, "pdata"_a)
+        .def(init<OPENRAVE_SHARED_PTR<SensorBase::IMUGeomData const>>(), "pgeom"_a)
+#else
         class_<PySensorBase::PyIMUSensorData, OPENRAVE_SHARED_PTR<PySensorBase::PyIMUSensorData>, bases<PySensorBase::PySensorData> >("IMUSensorData", DOXY_CLASS(SensorBase::IMUSensorData),no_init)
+#endif
         .def_readonly("rotation",&PySensorBase::PyIMUSensorData::rotation)
         .def_readonly("angular_velocity",&PySensorBase::PyIMUSensorData::angular_velocity)
         .def_readonly("linear_acceleration",&PySensorBase::PyIMUSensorData::linear_acceleration)
@@ -814,7 +882,15 @@ void init_openravepy_sensor()
         .def_readonly("angular_velocity_covariance",&PySensorBase::PyIMUSensorData::angular_velocity_covariance)
         .def_readonly("linear_acceleration_covariance",&PySensorBase::PyIMUSensorData::linear_acceleration_covariance)
         ;
+
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+        // OdometrySensorData is inside SensorBase
+        class_<PySensorBase::PyOdometrySensorData, OPENRAVE_SHARED_PTR<PySensorBase::PyOdometrySensorData>, PySensorBase::PySensorData>(sensor, "OdometrySensorData", DOXY_CLASS(SensorBase::OdometrySensorData))
+        .def(init<OPENRAVE_SHARED_PTR<SensorBase::OdometryGeomData const>, OPENRAVE_SHARED_PTR<SensorBase::OdometrySensorData>>(), "pgeom"_a, "pdata"_a)
+        .def(init<OPENRAVE_SHARED_PTR<SensorBase::OdometryGeomData const>>(), "pgeom"_a)
+#else
         class_<PySensorBase::PyOdometrySensorData, OPENRAVE_SHARED_PTR<PySensorBase::PyOdometrySensorData>, bases<PySensorBase::PySensorData> >("OdometrySensorData", DOXY_CLASS(SensorBase::OdometrySensorData),no_init)
+#endif
         .def_readonly("pose",&PySensorBase::PyOdometrySensorData::pose)
         .def_readonly("linear_velocity",&PySensorBase::PyOdometrySensorData::linear_velocity)
         .def_readonly("angular_velocity",&PySensorBase::PyOdometrySensorData::angular_velocity)
@@ -822,14 +898,30 @@ void init_openravepy_sensor()
         .def_readonly("velocity_covariance",&PySensorBase::PyOdometrySensorData::velocity_covariance)
         .def_readonly("targetid",&PySensorBase::PyOdometrySensorData::targetid)
         ;
+
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+        // TactileSensorData is inside SensorBase
+        class_<PySensorBase::PyTactileSensorData, OPENRAVE_SHARED_PTR<PySensorBase::PyTactileSensorData>, PySensorBase::PySensorData>(sensor, "TactileSensorData", DOXY_CLASS(SensorBase::TactileSensorData))
+        .def(init<OPENRAVE_SHARED_PTR<SensorBase::TactileGeomData const>, OPENRAVE_SHARED_PTR<SensorBase::TactileSensorData>>(), "pgeom"_a, "pdata"_a)
+        .def(init<OPENRAVE_SHARED_PTR<SensorBase::TactileGeomData const>>(), "pgeom"_a)
+#else
         class_<PySensorBase::PyTactileSensorData, OPENRAVE_SHARED_PTR<PySensorBase::PyTactileSensorData>, bases<PySensorBase::PySensorData> >("TactileSensorData", DOXY_CLASS(SensorBase::TactileSensorData),no_init)
+#endif
         .def_readonly("forces",&PySensorBase::PyTactileSensorData::forces)
         .def_readonly("force_covariance",&PySensorBase::PyTactileSensorData::force_covariance)
         .def_readonly("positions",&PySensorBase::PyTactileSensorData::positions)
         .def_readonly("thickness",&PySensorBase::PyTactileSensorData::thickness)
         ;
+
         {
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+            // ActuatorSensorData is inside SensorBase
+            class_<PySensorBase::PyActuatorSensorData, OPENRAVE_SHARED_PTR<PySensorBase::PyActuatorSensorData>, PySensorBase::PySensorData>(sensor, "ActuatorSensorData", DOXY_CLASS(SensorBase::ActuatorSensorData))
+            .def(init<OPENRAVE_SHARED_PTR<SensorBase::ActuatorGeomData const>, OPENRAVE_SHARED_PTR<SensorBase::ActuatorSensorData>>(), "pgeom"_a, "pdata"_a)
+            .def(init<OPENRAVE_SHARED_PTR<SensorBase::ActuatorGeomData const>>(), "pdata"_a)
+#else
             class_<PySensorBase::PyActuatorSensorData, OPENRAVE_SHARED_PTR<PySensorBase::PyActuatorSensorData>, bases<PySensorBase::PySensorData> >("ActuatorSensorData", DOXY_CLASS(SensorBase::ActuatorSensorData),no_init)
+#endif
             .def_readonly("state",&PySensorBase::PyActuatorSensorData::state)
             .def_readonly("measuredcurrent",&PySensorBase::PyActuatorSensorData::measuredcurrent)
             .def_readonly("measuredtemperature",&PySensorBase::PyActuatorSensorData::measuredtemperature)
@@ -843,7 +935,12 @@ void init_openravepy_sensor()
             .def_readonly("staticfriction",&PySensorBase::PyActuatorSensorData::staticfriction)
             .def_readonly("viscousfriction",&PySensorBase::PyActuatorSensorData::viscousfriction)
             ;
+
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+            enum_<SensorBase::ActuatorSensorData::ActuatorState>(m, "ActuatorState", py::arithmetic() DOXY_ENUM(ActuatorState))
+#else
             enum_<SensorBase::ActuatorSensorData::ActuatorState>("ActuatorState" DOXY_ENUM(ActuatorState))
+#endif
             .value("Undefined",SensorBase::ActuatorSensorData::AS_Undefined)
             .value("Idle",SensorBase::ActuatorSensorData::AS_Idle)
             .value("Moving",SensorBase::ActuatorSensorData::AS_Moving)
@@ -852,7 +949,11 @@ void init_openravepy_sensor()
             ;
         }
 
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+        enum_<SensorBase::SensorType>(m, "Type", py::arithmetic() DOXY_ENUM(SensorType))
+#else
         enum_<SensorBase::SensorType>("Type" DOXY_ENUM(SensorType))
+#endif
         .value("Invalid",SensorBase::ST_Invalid)
         .value("Laser",SensorBase::ST_Laser)
         .value("Camera",SensorBase::ST_Camera)
@@ -863,7 +964,12 @@ void init_openravepy_sensor()
         .value("Tactile",SensorBase::ST_Tactile)
         .value("Actuator",SensorBase::ST_Actuator)
         ;
+
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+        enum_<SensorBase::ConfigureCommand>(m, "ConfigureCommand", py::arithmetic() DOXY_ENUM(ConfigureCommand))
+#else
         enum_<SensorBase::ConfigureCommand>("ConfigureCommand" DOXY_ENUM(ConfigureCommand))
+#endif
         .value("PowerOn",SensorBase::CC_PowerOn)
         .value("PowerOff",SensorBase::CC_PowerOff)
         .value("PowerCheck",SensorBase::CC_PowerCheck)
@@ -876,10 +982,24 @@ void init_openravepy_sensor()
         ;
     }
 
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+    class_<PySensorGeometry, OPENRAVE_SHARED_PTR<PySensorGeometry>>(m, "SensorGeometry", DOXY_CLASS(PySensorGeometry))
+    // how to handle pure virtual
+    // see p.62 (book page) https://buildmedia.readthedocs.org/media/pdf/pybind11/stable/pybind11.pdf
+    .def("GetType", &PySensorGeometry::GetType)
+#else
     class_<PySensorGeometry, OPENRAVE_SHARED_PTR<PySensorGeometry>, boost::noncopyable >("SensorGeometry", DOXY_CLASS(PySensorGeometry),no_init)
     .def("GetType",py::pure_virtual(&PySensorGeometry::GetType))
+#endif
     ;
+
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+    class_<PyCameraGeomData, OPENRAVE_SHARED_PTR<PyCameraGeomData>, PySensorGeometry>(m, "CameraGeomData", DOXY_CLASS(SensorBase::CameraGeomData))
+    .def(init<>())
+    .def(init<OPENRAVE_SHARED_PTR<SensorBase::CameraGeomData const>>(), "pgeom"_a)
+#else
     class_<PyCameraGeomData, OPENRAVE_SHARED_PTR<PyCameraGeomData>, bases<PySensorGeometry> >("CameraGeomData", DOXY_CLASS(SensorBase::CameraGeomData))
+#endif
     .def_readwrite("intrinsics",&PyCameraGeomData::intrinsics)
     .def_readwrite("hardware_id",&PyCameraGeomData::hardware_id)
     .def_readwrite("width",&PyCameraGeomData::width)
@@ -891,7 +1011,13 @@ void init_openravepy_sensor()
     .def_readwrite("KK",&PyCameraGeomData::intrinsics) // deprecated
     ;
 
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+    class_<PyLaserGeomData, OPENRAVE_SHARED_PTR<PyLaserGeomData>, PySensorGeometry>(m, "LaserGeomData", DOXY_CLASS(SensorBase::LaserGeomData))
+    .def(init<>())
+    .def(init<OPENRAVE_SHARED_PTR<SensorBase::LaserGeomData const>>(), "pgeom"_a)
+#else
     class_<PyLaserGeomData, OPENRAVE_SHARED_PTR<PyLaserGeomData>, bases<PySensorGeometry> >("LaserGeomData", DOXY_CLASS(SensorBase::LaserGeomData))
+#endif
     .def_readwrite("min_angle",&PyLaserGeomData::min_angle)
     .def_readwrite("max_angle",&PyLaserGeomData::max_angle)
     .def_readwrite("min_range",&PyLaserGeomData::min_range)
@@ -900,26 +1026,62 @@ void init_openravepy_sensor()
     .def_readwrite("time_scan",&PyLaserGeomData::time_scan)
     ;
 
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+    class_<PyJointEncoderGeomData, OPENRAVE_SHARED_PTR<PyJointEncoderGeomData>, PySensorGeometry>(m, "JointEncoderGeomData", DOXY_CLASS(SensorBase::JointEncoderGeomData))
+    .def(init<>())
+    .def(init<OPENRAVE_SHARED_PTR<SensorBase::JointEncoderGeomData const>>(), "pgeom"_a)
+#else
     class_<PyJointEncoderGeomData, OPENRAVE_SHARED_PTR<PyJointEncoderGeomData>, bases<PySensorGeometry> >("JointEncoderGeomData", DOXY_CLASS(SensorBase::JointEncoderGeomData))
+#endif
     .def_readwrite("resolution",&PyJointEncoderGeomData::resolution)
     ;
 
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+    class_<PyForce6DGeomData, OPENRAVE_SHARED_PTR<PyForce6DGeomData>, PySensorGeometry>(m, "Force6DGeomData", DOXY_CLASS(SensorBase::Force6DGeomData))
+    .def(init<>())
+    .def(init<OPENRAVE_SHARED_PTR<SensorBase::Force6DGeomData const>>(), "pgeom"_a)
+#else
     class_<PyForce6DGeomData, OPENRAVE_SHARED_PTR<PyForce6DGeomData>, bases<PySensorGeometry> >("Force6DGeomData", DOXY_CLASS(SensorBase::Force6DGeomData))
+#endif
     ;
 
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+    class_<PyIMUGeomData, OPENRAVE_SHARED_PTR<PyIMUGeomData>, PySensorGeometry>(m, "IMUGeomData", DOXY_CLASS(SensorBase::IMUGeomData))
+    .def(init<>())
+    .def(init<OPENRAVE_SHARED_PTR<SensorBase::IMUGeomData const>>(), "pgeom"_a)
+#else
     class_<PyIMUGeomData, OPENRAVE_SHARED_PTR<PyIMUGeomData>, bases<PySensorGeometry> >("IMUGeomData", DOXY_CLASS(SensorBase::IMUGeomData))
+#endif
     .def_readwrite("time_measurement",&PyIMUGeomData::time_measurement)
     ;
 
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+    class_<PyOdometryGeomData, OPENRAVE_SHARED_PTR<PyOdometryGeomData>, PySensorGeometry>(m, "OdometryGeomData", DOXY_CLASS(SensorBase::OdometryGeomData))
+    .def(init<>())
+    .def(init<OPENRAVE_SHARED_PTR<SensorBase::OdometryGeomData const>>(), "pgeom"_a)
+#else
     class_<PyOdometryGeomData, OPENRAVE_SHARED_PTR<PyOdometryGeomData>, bases<PySensorGeometry> >("OdometryGeomData", DOXY_CLASS(SensorBase::OdometryGeomData))
+#endif
     .def_readwrite("targetid",&PyOdometryGeomData::targetid)
     ;
 
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+    class_<PyTactileGeomData, OPENRAVE_SHARED_PTR<PyTactileGeomData>, PySensorGeometry>(m, "TactileGeomData", DOXY_CLASS(SensorBase::TactileGeomData))
+    .def(init<>())
+    .def(init<OPENRAVE_SHARED_PTR<SensorBase::TactileGeomData const>>(), "pgeom"_a)
+#else
     class_<PyTactileGeomData, OPENRAVE_SHARED_PTR<PyTactileGeomData>, bases<PySensorGeometry> >("TactileGeomData", DOXY_CLASS(SensorBase::TactileGeomData))
+#endif
     .def_readwrite("thickness",&PyTactileGeomData::thickness)
     ;
 
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+    class_<PyActuatorGeomData, OPENRAVE_SHARED_PTR<PyActuatorGeomData>, PySensorGeometry>(m, "ActuatorGeomData", DOXY_CLASS(SensorBase::ActuatorGeomData))
+    .def(init<>())
+    .def(init<OPENRAVE_SHARED_PTR<SensorBase::ActuatorGeomData const>>(), "pgeom"_a)
+#else
     class_<PyActuatorGeomData, OPENRAVE_SHARED_PTR<PyActuatorGeomData>, bases<PySensorGeometry> >("ActuatorGeomData", DOXY_CLASS(SensorBase::ActuatorGeomData))
+#endif
     .def_readwrite("maxtorque",&PyActuatorGeomData::maxtorque)
     .def_readwrite("maxcurrent",&PyActuatorGeomData::maxcurrent)
     .def_readwrite("nominalcurrent",&PyActuatorGeomData::nominalcurrent)
@@ -930,7 +1092,11 @@ void init_openravepy_sensor()
     .def_readwrite("viscousfriction",&PyActuatorGeomData::viscousfriction)
     ;
 
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+    m.def("RaveCreateSensor",openravepy::RaveCreateSensor, PY_ARGS("env","name") DOXY_FN1(RaveCreateSensor));
+#else
     def("RaveCreateSensor",openravepy::RaveCreateSensor, PY_ARGS("env","name") DOXY_FN1(RaveCreateSensor));
+#endif
 }
 
 }

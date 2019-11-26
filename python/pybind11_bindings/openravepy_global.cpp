@@ -15,9 +15,9 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define NO_IMPORT_ARRAY
-#include "openravepy_int.h"
-#include "openravepy_kinbody.h"
-#include "include/openravepy_environmentbase.h"
+#include <openravepy/openravepy_int.h>
+#include <openravepy/openravepy_kinbody.h>
+#include <openravepy/openravepy_environmentbase.h>
 #include <openrave/xmlreaders.h>
 #include <openrave/utils.h>
 
@@ -107,7 +107,7 @@ XMLReadablePtr ExtractXMLReadable(object o) {
 
 object toPyXMLReadable(XMLReadablePtr p) {
     if( !p ) {
-        return py::object();
+        return py::none_();
     }
     return py::to_object(PyXMLReadablePtr(new PyXMLReadable(p)));
 }
@@ -130,7 +130,7 @@ PyXMLReadablePtr pyCreateStringXMLReadable(const std::string& xmlid, const std::
 object toPyGraphHandle(const GraphHandlePtr p)
 {
     if( !p ) {
-        return py::object();
+        return py::none_();
     }
     return py::to_object(PyGraphHandle(p));
 }
@@ -138,7 +138,7 @@ object toPyGraphHandle(const GraphHandlePtr p)
 object toPyUserData(UserDataPtr p)
 {
     if( !p ) {
-        return py::object();
+        return py::none_();
     }
     return py::to_object(PyUserData(p));
 }
@@ -371,7 +371,8 @@ public:
         return ConvertStringToUnicode(__str__());
     }
 
-    object vertices,indices;
+    object vertices = py::none_();
+    object indices = py::none_();
 };
 
 bool ExtractTriMesh(object o, TriMesh& mesh)
@@ -437,7 +438,7 @@ public:
     {
         std::vector<ConfigurationSpecification::Group>::const_iterator it  = _spec.FindCompatibleGroup(name,exactmatch);
         if( it == _spec._vgroups.end() ) {
-            return py::object();
+            return py::none_();
         }
         return py::to_object(OPENRAVE_SHARED_PTR<ConfigurationSpecification::Group>(new ConfigurationSpecification::Group(*it)));
     }
@@ -446,7 +447,7 @@ public:
     {
         std::vector<ConfigurationSpecification::Group>::const_iterator it  = _spec.FindTimeDerivativeGroup(name,exactmatch);
         if( it == _spec._vgroups.end() ) {
-            return py::object();
+            return py::none_();
         }
         return py::to_object(OPENRAVE_SHARED_PTR<ConfigurationSpecification::Group>(new ConfigurationSpecification::Group(*it)));
     }
@@ -513,7 +514,7 @@ public:
         if( _spec.ExtractTransform(t,vdata.begin(),openravepy::GetKinBody(pybody)) ) {
             return openravepy::ReturnTransform(t);
         }
-        return py::object();
+        return py::none_();
     }
 
     object ExtractIkParameterization(object odata, int timederivative=0, const std::string& robotname="", const std::string& manipulatorname="") const
@@ -525,7 +526,7 @@ public:
             return toPyIkParameterization(ikparam);
         }
         else {
-            return py::object();
+            return py::none_();
         }
     }
 
@@ -538,7 +539,7 @@ public:
             return toPyArray(values);
         }
         else {
-            return py::object();
+            return py::none_();
         }
     }
 
@@ -552,7 +553,7 @@ public:
             return toPyArray(values);
         }
         else {
-            return py::object();
+            return py::none_();
         }
     }
 
@@ -565,7 +566,7 @@ public:
             return py::to_object(deltatime);
         }
         else {
-            return py::object();
+            return py::none_();
         }
     }
 
@@ -737,7 +738,7 @@ PyConfigurationSpecificationPtr pyRaveGetAffineConfigurationSpecification(int af
     return openravepy::toPyConfigurationSpecification(RaveGetAffineConfigurationSpecification(affinedofs,openravepy::GetKinBody(pybody), interpolation));
 }
 
-object pyRaveGetAffineDOFValuesFromTransform(object otransform, int affinedofs, object oActvAffineRotationAxis=object())
+object pyRaveGetAffineDOFValuesFromTransform(object otransform, int affinedofs, object oActvAffineRotationAxis=py::none_())
 {
     Vector vActvAffineRotationAxis(0,0,1);
     if( !IS_PYTHONOBJECT_NONE(oActvAffineRotationAxis) ) {
@@ -750,7 +751,7 @@ object pyRaveGetAffineDOFValuesFromTransform(object otransform, int affinedofs, 
 
 std::string openravepyCompilerVersion()
 {
-    stringstream ss;
+    std::stringstream ss;
 #if defined(_MSC_VER)
     ss << "msvc " << _MSC_VER;
 #elif defined(__GNUC__)
@@ -833,7 +834,7 @@ void pyRaveSetDebugLevel(object olevel)
     OpenRAVE::RaveSetDebugLevel(pyGetIntFromPy(olevel, Level_Info));
 }
 
-int pyRaveInitialize(bool bLoadAllPlugins=true, object olevel=object())
+int pyRaveInitialize(bool bLoadAllPlugins=true, object olevel=py::none_())
 {
 
     return OpenRAVE::RaveInitialize(bLoadAllPlugins,pyGetIntFromPy(olevel, Level_Info));
@@ -851,7 +852,7 @@ object pyRaveInvertFileLookup(const std::string& filename)
     if( OpenRAVE::RaveInvertFileLookup(newfilename, filename) ) {
         return ConvertStringToUnicode(newfilename);
     }
-    return py::object();
+    return py::none_();
 }
 
 object RaveGetPluginInfo()
@@ -1135,7 +1136,7 @@ dReal ComputePoseDistSqr(object opose0, object opose1, dReal quatweight=1.0)
 
 string matrixSerialization(object o)
 {
-    stringstream ss;
+    std::stringstream ss;
     ss << std::setprecision(std::numeric_limits<dReal>::digits10+1);     /// have to do this or otherwise precision gets lost
     ss << ExtractTransformMatrix(o);
     return ss.str();
@@ -1143,7 +1144,7 @@ string matrixSerialization(object o)
 
 string poseSerialization(object o)
 {
-    stringstream ss;
+    std::stringstream ss;
     ss << std::setprecision(std::numeric_limits<dReal>::digits10+1);     /// have to do this or otherwise precision gets lost
     ss << ExtractTransform(o);
     return ss.str();
@@ -1174,7 +1175,7 @@ void init_openravepy_global()
 {
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
     using namespace py::literals;  // "..."_a
-    enum_<OpenRAVEErrorCode>(m, "ErrorCode" DOXY_ENUM(OpenRAVEErrorCode))
+    enum_<OpenRAVEErrorCode>(m, "ErrorCode", py::arithmetic() DOXY_ENUM(OpenRAVEErrorCode))
 #else
     enum_<OpenRAVEErrorCode>("ErrorCode" DOXY_ENUM(OpenRAVEErrorCode))
 #endif
@@ -1192,7 +1193,7 @@ void init_openravepy_global()
     .value("Timeout",ORE_Timeout)
     ;
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
-    enum_<DebugLevel>(m, "DebugLevel" DOXY_ENUM(DebugLevel))
+    enum_<DebugLevel>(m, "DebugLevel", py::arithmetic() DOXY_ENUM(DebugLevel))
 #else
     enum_<DebugLevel>("DebugLevel" DOXY_ENUM(DebugLevel))
 #endif
@@ -1205,7 +1206,7 @@ void init_openravepy_global()
     .value("VerifyPlans",Level_VerifyPlans)
     ;
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
-    enum_<SerializationOptions>(m, "SerializationOptions" DOXY_ENUM(SerializationOptions))
+    enum_<SerializationOptions>(m, "SerializationOptions", py::arithmetic() DOXY_ENUM(SerializationOptions))
 #else
     enum_<SerializationOptions>("SerializationOptions" DOXY_ENUM(SerializationOptions))
 #endif
@@ -1220,7 +1221,7 @@ void init_openravepy_global()
     .value("JointLimits",SO_JointLimits)
     ;
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
-    enum_<InterfaceType>(m, "InterfaceType" DOXY_ENUM(InterfaceType))
+    enum_<InterfaceType>(m, "InterfaceType", py::arithmetic() DOXY_ENUM(InterfaceType))
 #else
     enum_<InterfaceType>("InterfaceType" DOXY_ENUM(InterfaceType))
 #endif
@@ -1240,7 +1241,7 @@ void init_openravepy_global()
     .value(RaveGetInterfaceName(PT_SpaceSampler).c_str(),PT_SpaceSampler)
     ;
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
-    enum_<CloningOptions>(m, "CloningOptions" DOXY_ENUM(CloningOptions))
+    enum_<CloningOptions>(m, "CloningOptions", py::arithmetic() DOXY_ENUM(CloningOptions))
 #else
     enum_<CloningOptions>("CloningOptions" DOXY_ENUM(CloningOptions))
 #endif
@@ -1253,14 +1254,14 @@ void init_openravepy_global()
     ;
 
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
-    enum_<PhysicsEngineOptions>(m, "PhysicsEngineOptions" DOXY_ENUM(PhysicsEngineOptions))
+    enum_<PhysicsEngineOptions>(m, "PhysicsEngineOptions", py::arithmetic() DOXY_ENUM(PhysicsEngineOptions))
 #else
     enum_<PhysicsEngineOptions>("PhysicsEngineOptions" DOXY_ENUM(PhysicsEngineOptions))
 #endif
     .value("SelfCollisions",PEO_SelfCollisions)
     ;
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
-    enum_<IntervalType>(m, "Interval" DOXY_ENUM(IntervalType))
+    enum_<IntervalType>(m, "Interval", py::arithmetic() DOXY_ENUM(IntervalType))
 #else
     enum_<IntervalType>("Interval" DOXY_ENUM(IntervalType))
 #endif
@@ -1270,18 +1271,18 @@ void init_openravepy_global()
     .value("Closed",IT_Closed)
     ;
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
-    enum_<SampleDataType>(m, "SampleDataType" DOXY_ENUM(SampleDataType))
+    enum_<SampleDataType>(m, "SampleDataType", py::arithmetic() DOXY_ENUM(SampleDataType))
 #else
     enum_<SampleDataType>("SampleDataType" DOXY_ENUM(SampleDataType))
 #endif
     .value("Real",SDT_Real)
     .value("Uint32",SDT_Uint32)
     ;
-#ifdef USE_PYBIND11_PYTHON_BINDINGS
-    class_<UserData, UserDataPtr >(m, "UserData", DOXY_CLASS(UserData))
-#else
-    class_<UserData, UserDataPtr >("UserData", DOXY_CLASS(UserData))
-#endif
+// #ifdef USE_PYBIND11_PYTHON_BINDINGS
+//     class_<UserData, UserDataPtr >(m, "UserData", DOXY_CLASS(UserData))
+// #else
+//     class_<UserData, UserDataPtr >("UserData", DOXY_CLASS(UserData))
+// #endif
     ;
 
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
@@ -1292,6 +1293,8 @@ void init_openravepy_global()
 
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
     class_<PyGraphHandle, OPENRAVE_SHARED_PTR<PyGraphHandle> >(m, "GraphHandle", DOXY_CLASS(GraphHandle))
+    .def(init<>())
+    .def(init<GraphHandlePtr>(), "handle"_a)
 #else
     class_<PyGraphHandle, OPENRAVE_SHARED_PTR<PyGraphHandle> >("GraphHandle", DOXY_CLASS(GraphHandle), no_init)
 #endif
@@ -1302,6 +1305,8 @@ void init_openravepy_global()
 
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
     class_<PyUserData, OPENRAVE_SHARED_PTR<PyUserData> >(m, "UserData", DOXY_CLASS(UserData))
+    .def(init<>())
+    .def(init<UserDataPtr>(), "handle"_a)
 #else
     class_<PyUserData, OPENRAVE_SHARED_PTR<PyUserData> >("UserData", DOXY_CLASS(UserData), no_init)
 #endif
@@ -1310,13 +1315,15 @@ void init_openravepy_global()
     ;
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
     class_<PySerializableData, OPENRAVE_SHARED_PTR<PySerializableData>, PyUserData >(m, "SerializableData", DOXY_CLASS(SerializableData))
+    .def(init<>())
+    .def(init<SerializableDataPtr>(), "handle"_a)
 #else
     class_<PySerializableData, OPENRAVE_SHARED_PTR<PySerializableData>, bases<PyUserData> >("SerializableData", DOXY_CLASS(SerializableData))
 #endif
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
-    .def(init<std::string>(), "data"_a)
+    .def(init<const std::string&>(), "data"_a)
 #else
-    .def(init<std::string>(py::args("data")))
+    .def(init<const std::string&>(py::args("data")))
 #endif
     .def("Close",&PySerializableData::Close,DOXY_FN(SerializableData,Close))
     .def("Serialize",&PySerializableData::Serialize, PY_ARGS("options") DOXY_FN(SerializableData, Serialize))
@@ -1325,7 +1332,9 @@ void init_openravepy_global()
 
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
     class_<PyRay, OPENRAVE_SHARED_PTR<PyRay> >(m, "Ray", DOXY_CLASS(geometry::ray))
+    .def(init<>())
     .def(init<object, object>(), "pos"_a, "dir"_a)
+    .def(init<const RAY&>(), "r"_a)
 #else
     class_<PyRay, OPENRAVE_SHARED_PTR<PyRay> >("Ray", DOXY_CLASS(geometry::ray))
     .def(init<object,object>(py::args("pos","dir")))
@@ -1335,13 +1344,40 @@ void init_openravepy_global()
     .def("__str__",&PyRay::__str__)
     .def("__unicode__",&PyRay::__unicode__)
     .def("__repr__",&PyRay::__repr__)
-#ifndef USE_PYBIND11_PYTHON_BINDINGS
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+    .def(py::pickle(
+    [](const PyRay &pyr) {
+        // __getstate__
+        /* Return a tuple that fully encodes the state of the object */
+        return py::make_tuple(toPyVector3(pyr.r.pos), toPyVector3(pyr.r.dir));
+    },
+    [](py::tuple state) {
+        // __setstate__
+        if (state.size() != 2) {
+            throw std::runtime_error("Invalid state!");
+        }
+        /* Create a new C++ instance */
+        PyRay pyr;
+        /* Assign any additional state */
+        py::array_t<dReal> pos = state[0].cast<py::array_t<dReal>>();
+        py::array_t<dReal> dir = state[1].cast<py::array_t<dReal>>();
+        for(size_t i = 0; i < 3; ++i) {
+            pyr.r.pos[i] = *pos.data(i);
+            pyr.r.dir[i] = *dir.data(i);
+        }
+        pyr.r.pos[3] = pyr.r.dir[3] = 0;
+        return pyr;
+    }
+    ))
+#else
     .def_pickle(Ray_pickle_suite())
 #endif
     ;
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
     class_<PyAABB, OPENRAVE_SHARED_PTR<PyAABB> >(m, "AABB", DOXY_CLASS(geometry::aabb))
+    .def(init<>())
     .def(init<object, object>(), "pos"_a, "extents"_a)
+    .def(init<const AABB&>(), "ab"_a)
 #else
     class_<PyAABB, OPENRAVE_SHARED_PTR<PyAABB> >("AABB", DOXY_CLASS(geometry::aabb))
     .def(init<object,object>(py::args("pos","extents")))
@@ -1352,13 +1388,40 @@ void init_openravepy_global()
     .def("__unicode__",&PyAABB::__unicode__)
     .def("__repr__",&PyAABB::__repr__)
     .def("toDict", &PyAABB::toDict)
-#ifndef USE_PYBIND11_PYTHON_BINDINGS
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+    .def(py::pickle(
+    [](const PyAABB &pyab) {
+        // __getstate__
+        /* Return a tuple that fully encodes the state of the object */
+        return py::make_tuple(toPyVector3(pyab.ab.pos), toPyVector3(pyab.ab.extents));
+    },
+    [](py::tuple state) {
+        // __setstate__
+        if (state.size() != 2) {
+            throw std::runtime_error("Invalid state!");
+        }
+        /* Create a new C++ instance */
+        PyAABB pyab;
+        /* Assign any additional state */
+        py::array_t<dReal> pos = state[0].cast<py::array_t<dReal>>();
+        py::array_t<dReal> extents = state[1].cast<py::array_t<dReal>>();
+        for(size_t i = 0; i < 3; ++i) {
+            pyab.ab.pos[i] = *pos.data(i);
+            pyab.ab.extents[i] = *extents.data(i);
+        }
+        pyab.ab.pos[3] = pyab.ab.extents[3] = 0;
+        return pyab;
+    }
+    ))
+#else
     .def_pickle(AABB_pickle_suite())
-#endif
+#endif // USE_PYBIND11_PYTHON_BINDINGS
     ;
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
     class_<PyTriMesh, OPENRAVE_SHARED_PTR<PyTriMesh> >(m, "TriMesh", DOXY_CLASS(TriMesh))
+    .def(init<>())
     .def(init<object, object>(), "vertices"_a, "indices"_a)
+    .def(init<const TriMesh&>(), "mesh"_a)
 #else
     class_<PyTriMesh, OPENRAVE_SHARED_PTR<PyTriMesh> >("TriMesh", DOXY_CLASS(TriMesh))
     .def(init<object,object>(py::args("vertices","indices")))
@@ -1367,7 +1430,27 @@ void init_openravepy_global()
     .def_readwrite("indices",&PyTriMesh::indices)
     .def("__str__",&PyTriMesh::__str__)
     .def("__unicode__",&PyTriMesh::__unicode__)
-#ifndef USE_PYBIND11_PYTHON_BINDINGS
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+    .def(py::pickle(
+    [](const PyTriMesh &pymesh) {
+        // __getstate__
+        /* Return a tuple that fully encodes the state of the object */
+        return py::make_tuple(pymesh.vertices, pymesh.indices);
+    },
+    [](py::tuple state) {
+        // __setstate__
+        if (state.size() != 2) {
+            throw std::runtime_error("Invalid state!");
+        }
+        /* Create a new C++ instance */
+        PyTriMesh pymesh;
+        /* Assign any additional state */
+        pymesh.vertices = state[0];
+        pymesh.indices = state[1];
+        return pymesh;
+    }
+    ))
+#else
     .def_pickle(TriMesh_pickle_suite())
 #endif
     ;
@@ -1396,6 +1479,7 @@ void init_openravepy_global()
     ;
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
     class_<PyPluginInfo, OPENRAVE_SHARED_PTR<PyPluginInfo> >(m, "PluginInfo", DOXY_CLASS(PLUGININFO))
+    .def(init<const PLUGININFO&>(), "info"_a)
 #else
     class_<PyPluginInfo, OPENRAVE_SHARED_PTR<PyPluginInfo> >("PluginInfo", DOXY_CLASS(PLUGININFO),no_init)
 #endif
@@ -1410,6 +1494,8 @@ void init_openravepy_global()
         scope_ configurationspecification =
 #ifdef USE_PYBIND11_PYTHON_BINDINGS 
                                            class_<PyConfigurationSpecification, PyConfigurationSpecificationPtr >(m, "ConfigurationSpecification",DOXY_CLASS(ConfigurationSpecification))
+                                           .def(init<>())
+                                           .def(init<const ConfigurationSpecification&>())
                                            .def(init<PyConfigurationSpecificationPtr>(), "spec"_a)
                                            .def(init<const ConfigurationSpecification::Group&>(), "group"_a)
                                            .def(init<const std::string&>(), "xmldata"_a)
@@ -1492,7 +1578,22 @@ void init_openravepy_global()
                                            .def("__ne__",&PyConfigurationSpecification::__ne__)
                                            .def("__add__",&PyConfigurationSpecification::__add__)
                                            .def("__iadd__",&PyConfigurationSpecification::__iadd__)
-#ifndef USE_PYBIND11_PYTHON_BINDINGS
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+                                           .def(py::pickle(
+                                            [](const PyConfigurationSpecification& pyspec) {
+                                                std::stringstream ss;
+                                                ss << pyspec._spec;
+                                                return py::make_tuple(ss.str());
+                                            },
+                                            [](py::tuple state) {
+                                                // __setstate__
+                                                if(state.size() != 1) {
+                                                    throw std::runtime_error("Invalid state");
+                                                }
+                                                return PyConfigurationSpecification(state[0].cast<std::string>());
+                                            }
+                                            ))
+#else
                                            .def_pickle(ConfigurationSpecification_pickle_suite())
 #endif
                                            .def("__str__",&PyConfigurationSpecification::__str__)
@@ -1502,7 +1603,9 @@ void init_openravepy_global()
 
         {
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
-            scope_ group = class_<ConfigurationSpecification::Group, OPENRAVE_SHARED_PTR<ConfigurationSpecification::Group> >(m, "Group",DOXY_CLASS(ConfigurationSpecification::Group))
+            // Group belongs to ConfigurationSpecification
+            scope_ group = class_<ConfigurationSpecification::Group, OPENRAVE_SHARED_PTR<ConfigurationSpecification::Group> >(configurationspecification, "Group",DOXY_CLASS(ConfigurationSpecification::Group))
+            .def(init<>())
 #else
             scope_ group = class_<ConfigurationSpecification::Group, OPENRAVE_SHARED_PTR<ConfigurationSpecification::Group> >("Group",DOXY_CLASS(ConfigurationSpecification::Group))
 #endif
@@ -1624,7 +1727,7 @@ void init_openravepy_global()
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
     m.def("RaveInitialize", openravepy::pyRaveInitialize,
         "load_all_plugins"_a = true,
-        "level"_a = py::object(),
+        "level"_a = nullptr,
         DOXY_FN1(RaveInitialize)
     );
 #else
@@ -1669,7 +1772,7 @@ void init_openravepy_global()
     m.def("RaveClone", openravepy::pyRaveClone,
         "ref"_a,
         "cloningoptions"_a,
-        "cloneenv"_a = PyEnvironmentBasePtr(),
+        "cloneenv"_a = nullptr, // PyEnvironmentBasePtr(),
         DOXY_FN1(RaveClone)
     );
 #else
@@ -1699,7 +1802,7 @@ void init_openravepy_global()
     m.def("RaveGetAffineDOFValuesFromTransform", openravepy::pyRaveGetAffineDOFValuesFromTransform, 
         "transform"_a,
         "affinedofs"_a,
-        "rotationaxis"_a = py::object(),
+        "rotationaxis"_a = nullptr,
         DOXY_FN1(RaveGetAffineDOFValuesFromTransform)
     );
 #else
@@ -1708,7 +1811,7 @@ void init_openravepy_global()
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
     m.def("RaveGetAffineConfigurationSpecification", openravepy::pyRaveGetAffineConfigurationSpecification,
         "affinedofs"_a,
-        "body"_a = PyKinBodyPtr(),
+        "body"_a = nullptr, // PyKinBodyPtr(),
         "interpolation"_a = "",
         DOXY_FN1(RaveGetAffineConfigurationSpecification)
     );

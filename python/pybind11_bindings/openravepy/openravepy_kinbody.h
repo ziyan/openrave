@@ -17,7 +17,7 @@
 #ifndef OPENRAVEPY_INTERNAL_KINBODY_H
 #define OPENRAVEPY_INTERNAL_KINBODY_H
 
-#include "openravepy_int.h"
+#include <openravepy/openravepy_int.h>
 #include <openrave/utils.h>
 
 namespace openravepy {
@@ -30,7 +30,7 @@ public:
     virtual py::object __enter__() = 0;
     virtual void __exit__(py::object type, py::object value, py::object traceback) = 0;
     virtual py::object GetBody() const = 0;
-    virtual void Restore(py::object p=py::object())  = 0;
+    virtual void Restore(py::object p=py::none_())  = 0;
     virtual void Release() = 0;
     virtual void Close() = 0;
     virtual std::string __str__() = 0;
@@ -58,7 +58,7 @@ public:
         return _state->GetBody();
     }
 
-    void Restore(py::object p=py::object()) {
+    void Restore(py::object p=py::none_()) {
         if( IS_PYTHONOBJECT_NONE(p) ) {
             _state->Restore();
         }
@@ -94,19 +94,34 @@ public:
         _trelative = ReturnTransform(Transform());
     }
     PyGrabbedInfo(const RobotBase::GrabbedInfo& info) {
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+        _grabbedname = info._grabbedname;
+        _robotlinkname = info._robotlinkname;
+#else
         _grabbedname = ConvertStringToUnicode(info._grabbedname);
         _robotlinkname = ConvertStringToUnicode(info._robotlinkname);
+#endif
         _trelative = ReturnTransform(info._trelative);
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+        _setRobotLinksToIgnore = std::vector<int>(begin(info._setRobotLinksToIgnore), end(info._setRobotLinksToIgnore));
+#else
         py::list setRobotLinksToIgnore;
         FOREACHC(itindex, info._setRobotLinksToIgnore) {
             setRobotLinksToIgnore.append(*itindex);
         }
         _setRobotLinksToIgnore = setRobotLinksToIgnore;
+#endif
     }
 
     RobotBase::GrabbedInfoPtr GetGrabbedInfo() const
     {
         RobotBase::GrabbedInfoPtr pinfo(new RobotBase::GrabbedInfo());
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+        pinfo->_grabbedname = _grabbedname;
+        pinfo->_robotlinkname = _robotlinkname;
+        pinfo->_trelative = ExtractTransform(_trelative);
+        pinfo->_setRobotLinksToIgnore = std::set<int>(begin(_setRobotLinksToIgnore), end(_setRobotLinksToIgnore));
+#else
         pinfo->_grabbedname = py::extract<std::string>(_grabbedname);
         pinfo->_robotlinkname = py::extract<std::string>(_robotlinkname);
         pinfo->_trelative = ExtractTransform(_trelative);
@@ -115,22 +130,35 @@ public:
         FOREACHC(it,v) {
             pinfo->_setRobotLinksToIgnore.insert(*it);
         }
+#endif
         return pinfo;
     }
 
     std::string __str__() {
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+        std::string robotlinkname = _robotlinkname;
+        std::string grabbedname = _grabbedname;
+#else
         std::string robotlinkname = py::extract<std::string>(_robotlinkname);
         std::string grabbedname = py::extract<std::string>(_grabbedname);
+#endif
         return boost::str(boost::format("<grabbedinfo:%s -> %s>")%robotlinkname%grabbedname);
     }
     py::object __unicode__() {
         return ConvertStringToUnicode(__str__());
     }
-
-    py::object _grabbedname, _robotlinkname;
-    py::object _trelative;
-    py::object _setRobotLinksToIgnore;
-};
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+    std::string _grabbedname, _robotlinkname;
+#else
+    py::object _grabbedname = py::none_(), _robotlinkname = py::none_();
+#endif
+    py::object _trelative = py::none_();
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+    std::vector<int> _setRobotLinksToIgnore;
+#else
+    py::object _setRobotLinksToIgnore = py::none_();
+#endif
+}; // class PyGrabbedInfo
 typedef OPENRAVE_SHARED_PTR<PyGrabbedInfo> PyGrabbedInfoPtr;
 
 protected:
@@ -197,7 +225,7 @@ public:
     py::object GetTransform() const;
     py::object GetTransformPose() const;
     py::object GetLinkTransformations(bool returndoflastvlaues=false) const;
-    void SetLinkTransformations(py::object transforms, py::object odoflastvalues=py::object());
+    void SetLinkTransformations(py::object transforms, py::object odoflastvalues=py::none_());
     void SetLinkVelocities(py::object ovelocities);
     py::object GetLinkEnableStates() const;
     void SetLinkEnableStates(py::object oenablestates);
@@ -205,9 +233,9 @@ public:
     void SetDOFVelocities(py::object odofvelocities, py::object olinearvel, py::object oangularvel, uint32_t checklimits);
     void SetDOFVelocities(py::object odofvelocities, py::object olinearvel, py::object oangularvel);
     void SetDOFVelocities(py::object odofvelocities);
-    void SetDOFVelocities(py::object odofvelocities, uint32_t checklimits=KinBody::CLA_CheckLimits, py::object oindices = py::object());
+    void SetDOFVelocities(py::object odofvelocities, uint32_t checklimits=KinBody::CLA_CheckLimits, py::object oindices = py::none_());
     py::object GetLinkVelocities() const;
-    py::object GetLinkAccelerations(py::object odofaccelerations, py::object oexternalaccelerations=py::object()) const;
+    py::object GetLinkAccelerations(py::object odofaccelerations, py::object oexternalaccelerations=py::none_()) const;
     py::object ComputeAABB(bool bEnabledOnlyLinks=false);
     py::object ComputeAABBFromTransform(py::object otransform, bool bEnabledOnlyLinks=false);
     py::object ComputeLocalAABB(bool bEnabledOnlyLinks=false);
@@ -221,7 +249,7 @@ public:
     void SetTransform(py::object otransform);
     void SetDOFWeights(py::object o);
     void SetDOFResolutions(py::object o);
-    void SetDOFLimits(py::object olower, py::object oupper, py::object oindices=py::object());
+    void SetDOFLimits(py::object olower, py::object oupper, py::object oindices=py::none_());
     void SetDOFVelocityLimits(py::object o);
     void SetDOFAccelerationLimits(py::object o);
     void SetDOFJerkLimits(py::object o);
@@ -233,16 +261,16 @@ public:
     void SetTransformWithDOFValues(py::object otrans,py::object ojoints);
     void SetDOFValues(py::object o, py::object indices, uint32_t checklimits);
     void SetDOFValues(py::object o, py::object indices);
-    py::object SubtractDOFValues(py::object ovalues0, py::object ovalues1, py::object oindices=py::object());
+    py::object SubtractDOFValues(py::object ovalues0, py::object ovalues1, py::object oindices=py::none_());
     void SetDOFTorques(py::object otorques, bool bAdd);
-    py::object ComputeJacobianTranslation(int index, py::object oposition, py::object oindices=py::object());
-    py::object ComputeJacobianAxisAngle(int index, py::object oindices=py::object());
+    py::object ComputeJacobianTranslation(int index, py::object oposition, py::object oindices=py::none_());
+    py::object ComputeJacobianAxisAngle(int index, py::object oindices=py::none_());
     py::object CalculateJacobian(int index, py::object oposition);
     py::object CalculateRotationJacobian(int index, py::object q) const;
     py::object CalculateAngularVelocityJacobian(int index) const;
-    py::object ComputeHessianTranslation(int index, py::object oposition, py::object oindices=py::object());
-    py::object ComputeHessianAxisAngle(int index, py::object oindices=py::object());
-    py::object ComputeInverseDynamics(py::object odofaccelerations, py::object oexternalforcetorque=py::object(), bool returncomponents=false);
+    py::object ComputeHessianTranslation(int index, py::object oposition, py::object oindices=py::none_());
+    py::object ComputeHessianAxisAngle(int index, py::object oindices=py::none_());
+    py::object ComputeInverseDynamics(py::object odofaccelerations, py::object oexternalforcetorque=py::none_(), bool returncomponents=false);
     void SetSelfCollisionChecker(PyCollisionCheckerBasePtr pycollisionchecker);
     PyInterfaceBasePtr GetSelfCollisionChecker();
     bool CheckSelfCollision(PyCollisionReportPtr pReport=PyCollisionReportPtr(), PyCollisionCheckerBasePtr pycollisionchecker=PyCollisionCheckerBasePtr());
@@ -275,12 +303,12 @@ public:
     py::object GetAdjacentLinks() const;
     py::object GetManageData() const;
     int GetUpdateStamp() const;
-    string serialize(int options) const;
-    string GetKinematicsGeometryHash() const;
-    PyStateRestoreContextBase* CreateKinBodyStateSaver(py::object options=py::object());
+    std::string serialize(int options) const;
+    std::string GetKinematicsGeometryHash() const;
+    PyStateRestoreContextBase* CreateKinBodyStateSaver(py::object options=py::none_());
     virtual PyStateRestoreContextBase* CreateStateSaver(py::object options);
-    virtual string __repr__();
-    virtual string __str__();
+    virtual std::string __repr__();
+    virtual std::string __str__();
     virtual py::object __unicode__();
     virtual void __enter__();
     virtual void __exit__(py::object type, py::object value, py::object traceback);
@@ -293,7 +321,7 @@ protected:
 };
 
 template <typename T>
-py::object GetCustomParameters(const std::map<std::string, std::vector<T> >& parameters, py::object oname = py::object(), int index = -1);
+py::object GetCustomParameters(const std::map<std::string, std::vector<T> >& parameters, py::object oname = py::none_(), int index = -1);
 
 } // namespace openravepy
 

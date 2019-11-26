@@ -18,8 +18,8 @@
 #define OPENRAVEPY_INTERNAL_JOINTINFO_H
 
 #define NO_IMPORT_ARRAY
-#include "../openravepy_int.h"
-#include "../openravepy_kinbody.h"
+#include <openravepy/openravepy_int.h>
+#include <openravepy/openravepy_kinbody.h>
 
 namespace openravepy {
 using py::object;
@@ -28,9 +28,6 @@ class PySideWall
 {
 public:
     PySideWall() {
-        transf = ReturnTransform(Transform());
-        vExtents = toPyVector3(Vector());
-        type = 0;
     }
     PySideWall(const KinBody::GeometryInfo::SideWall& sidewall) {
         transf = ReturnTransform(sidewall.transf);
@@ -43,28 +40,15 @@ public:
         sidewall.type = static_cast<KinBody::GeometryInfo::SideWallType>(type);
     }
 
-    object transf, vExtents;
-    int type;
+    object transf = ReturnTransform(Transform());
+    object vExtents = toPyVector3(Vector());
+    int type = 0;
 };
 
 class PyGeometryInfo
 {
 public:
     PyGeometryInfo() {
-        _t = ReturnTransform(Transform());
-        _vGeomData = toPyVector4(Vector());
-        _vGeomData2 = toPyVector4(Vector());
-        _vGeomData3 = toPyVector4(Vector());
-        _vGeomData4 = toPyVector4(Vector());
-        _vDiffuseColor = toPyVector3(Vector(1,1,1));
-        _vAmbientColor = toPyVector3(Vector(0,0,0));
-        _type = GT_None;
-        _fTransparency = 0;
-        _vRenderScale = toPyVector3(Vector(1,1,1));
-        _vCollisionScale = toPyVector3(Vector(1,1,1));
-        _bVisible = true;
-        _bModifiable = true;
-        _vSideWalls = py::list();
     }
     PyGeometryInfo(const KinBody::GeometryInfo& info) {
         Init(info);
@@ -107,7 +91,7 @@ public:
         if( pgeominfo->ComputeInnerEmptyVolume(tInnerEmptyVolume, abInnerEmptyExtents) ) {
             return py::make_tuple(ReturnTransform(tInnerEmptyVolume), toPyVector3(abInnerEmptyExtents));
         }
-        return py::make_tuple(object(), object());
+        return py::make_tuple(py::none_(), py::none_());
     }
 
     object ComputeAABB(object otransform) {
@@ -124,7 +108,7 @@ public:
         Init(*pgeominfo);
     }
 
-    object SerializeJSON(const dReal fUnitScale=1.0, object ooptions=object())
+    object SerializeJSON(const dReal fUnitScale=1.0, object ooptions=py::none_())
     {
         rapidjson::Document doc;
         KinBody::GeometryInfoPtr pgeominfo = GetGeometryInfo();
@@ -173,16 +157,25 @@ public:
         return pinfo;
     }
 
-    object _t, _vGeomData, _vGeomData2, _vGeomData3, _vGeomData4, _vDiffuseColor, _vAmbientColor, _meshcollision;
+    object _t = ReturnTransform(Transform());
+    object _vGeomData = toPyVector4(Vector());
+    object _vGeomData2 = toPyVector4(Vector());
+    object _vGeomData3 = toPyVector4(Vector());
+    object _vGeomData4 = toPyVector4(Vector());
+    object _vDiffuseColor = toPyVector3(Vector(1,1,1));
+    object _vAmbientColor = toPyVector3(Vector(0,0,0));
+    object _meshcollision = py::none_();
     py::list _vSideWalls;
     float _containerBaseHeight;
-    GeometryType _type;
-    object _name;
-    object _filenamerender, _filenamecollision;
-    object _vRenderScale, _vCollisionScale;
+    GeometryType _type = GT_None;
+    // best to initialize these as None's
+    object _name = py::none_();
+    object _filenamerender = py::none_(), _filenamecollision = py::none_();
+    object _vRenderScale = toPyVector3(Vector(1,1,1));
+    object _vCollisionScale = toPyVector3(Vector(1,1,1));
     py::dict _mapExtraGeometries;
-    float _fTransparency;
-    bool _bVisible, _bModifiable;
+    float _fTransparency = 0.0;
+    bool _bVisible = true, _bModifiable = true;
 };
 typedef OPENRAVE_SHARED_PTR<PyGeometryInfo> PyGeometryInfoPtr;
 
@@ -195,36 +188,21 @@ public:
     KinBody::LinkInfoPtr GetLinkInfo();
 
     py::list _vgeometryinfos;
-    object _name;
-    object _t, _tMassFrame;
-    dReal _mass;
-    object _vinertiamoments;
+    object _name = py::none_();
+    object _t = ReturnTransform(Transform());
+    object _tMassFrame = ReturnTransform(Transform());
+    dReal _mass = 0.0;
+    object _vinertiamoments = toPyVector3(Vector(1,1,1));
     py::dict _mapFloatParameters, _mapIntParameters, _mapStringParameters;
-    object _vForcedAdjacentLinks;
-    bool _bStatic;
-    bool _bIsEnabled;
+    object _vForcedAdjacentLinks = py::list();
+    bool _bStatic = false;
+    bool _bIsEnabled = true;
 };
 
 class PyElectricMotorActuatorInfo
 {
 public:
-    PyElectricMotorActuatorInfo() {
-        gear_ratio = 0;
-        assigned_power_rating = 0;
-        max_speed = 0;
-        no_load_speed = 0;
-        stall_torque = 0;
-        max_instantaneous_torque = 0;
-        nominal_torque = 0;
-        rotor_inertia = 0;
-        torque_constant = 0;
-        nominal_voltage = 0;
-        speed_constant = 0;
-        starting_current = 0;
-        terminal_resistance = 0;
-        coloumb_friction = 0;
-        viscous_friction = 0;
-    }
+    PyElectricMotorActuatorInfo() {}
     PyElectricMotorActuatorInfo(const ElectricMotorActuatorInfo& info) {
         model_type = info.model_type;
         gear_ratio = info.gear_ratio;
@@ -285,22 +263,22 @@ public:
     }
 
     std::string model_type;
-    dReal gear_ratio;
-    dReal assigned_power_rating;
-    dReal max_speed;
-    dReal no_load_speed;
-    dReal stall_torque;
-    dReal max_instantaneous_torque;
+    dReal gear_ratio = 0.0;
+    dReal assigned_power_rating = 0.0;
+    dReal max_speed = 0.0;
+    dReal no_load_speed = 0.0;
+    dReal stall_torque = 0.0;
+    dReal max_instantaneous_torque = 0.0;
     py::list nominal_speed_torque_points, max_speed_torque_points;
-    dReal nominal_torque;
-    dReal rotor_inertia;
-    dReal torque_constant;
-    dReal nominal_voltage;
-    dReal speed_constant;
-    dReal starting_current;
-    dReal terminal_resistance;
-    dReal coloumb_friction;
-    dReal viscous_friction;
+    dReal nominal_torque = 0.0;
+    dReal rotor_inertia = 0.0;
+    dReal torque_constant = 0.0;
+    dReal nominal_voltage = 0.0;
+    dReal speed_constant = 0.0;
+    dReal starting_current = 0.0;
+    dReal terminal_resistance = 0.0;
+    dReal coloumb_friction = 0.0;
+    dReal viscous_friction = 0.0;
 };
 typedef OPENRAVE_SHARED_PTR<PyElectricMotorActuatorInfo> PyElectricMotorActuatorInfoPtr;
 
@@ -312,9 +290,9 @@ public:
     PyJointInfo(const KinBody::JointInfo& info, PyEnvironmentBasePtr pyenv);
     KinBody::JointInfoPtr GetJointInfo();
     KinBody::JointType _type;
-    object _name;
-    object _linkname0, _linkname1;
-    object _vanchor, _vaxes, _vcurrentvalues, _vresolution, _vmaxvel, _vhardmaxvel, _vmaxaccel, _vhardmaxaccel, _vmaxjerk, _vhardmaxjerk, _vmaxtorque, _vmaxinertia, _vweights, _voffsets, _vlowerlimit, _vupperlimit;
+    object _name = py::none_();
+    object _linkname0 = py::none_(), _linkname1 = py::none_();
+    object _vanchor = py::none_(), _vaxes = py::none_(), _vcurrentvalues = py::none_(), _vresolution = py::none_(), _vmaxvel = py::none_(), _vhardmaxvel = py::none_(), _vmaxaccel = py::none_(), _vhardmaxaccel = py::none_(), _vmaxjerk = py::none_(), _vhardmaxjerk = py::none_(), _vmaxtorque = py::none_(), _vmaxinertia = py::none_(), _vweights = py::none_(), _voffsets = py::none_(), _vlowerlimit = py::none_(), _vupperlimit = py::none_();
     object _trajfollow;
     PyElectricMotorActuatorInfoPtr _infoElectricMotor;
     py::list _vmimic;
@@ -450,7 +428,7 @@ public:
             if( _pgeometry->ComputeInnerEmptyVolume(tInnerEmptyVolume, abInnerEmptyExtents) ) {
                 return py::make_tuple(ReturnTransform(tInnerEmptyVolume), toPyVector3(abInnerEmptyExtents));
             }
-            return py::make_tuple(object(), object());
+            return py::make_tuple(py::none_(), py::none_());
         }
         bool __eq__(OPENRAVE_SHARED_PTR<PyGeometry> p) {
             return !!p && _pgeometry == p->_pgeometry;
@@ -523,7 +501,7 @@ public:
     object GetCollisionData() {
         return toPyTriMesh(_plink->GetCollisionData());
     }
-    object ComputeLocalAABB() const { // TODO object otransform=object()
+    object ComputeLocalAABB() const { // TODO object otransform=py::none_()
         //if( IS_PYTHONOBJECT_NONE(otransform) ) {
         return toPyAABB(_plink->ComputeLocalAABB());
     }
@@ -702,7 +680,7 @@ public:
         return toPyArray<dReal,6>(v);
     }
 
-    object GetFloatParameters(object oname=object(), int index=-1) const {
+    object GetFloatParameters(object oname=py::none_(), int index=-1) const {
         return GetCustomParameters(_plink->GetFloatParameters(), oname, index);
     }
 
@@ -711,7 +689,7 @@ public:
         _plink->SetFloatParameters(key,ExtractArray<dReal>(oparameters));
     }
 
-    object GetIntParameters(object oname=object(), int index=-1) const {
+    object GetIntParameters(object oname=py::none_(), int index=-1) const {
         return GetCustomParameters(_plink->GetIntParameters(), oname, index);
     }
 
@@ -720,7 +698,7 @@ public:
         _plink->SetIntParameters(key,ExtractArray<int>(oparameters));
     }
 
-    object GetStringParameters(object oname=object()) const;
+    object GetStringParameters(object oname=py::none_()) const;
 
     void SetStringParameters(const std::string& key, object ovalue)
     {
@@ -895,42 +873,42 @@ public:
     }
 
     object GetLimits() const {
-        vector<dReal> lower, upper;
+        std::vector<dReal> lower, upper;
         _pjoint->GetLimits(lower,upper);
         return py::make_tuple(toPyArray(lower),toPyArray(upper));
     }
     object GetVelocityLimits() const {
-        vector<dReal> vlower,vupper;
+        std::vector<dReal> vlower,vupper;
         _pjoint->GetVelocityLimits(vlower,vupper);
         return py::make_tuple(toPyArray(vlower),toPyArray(vupper));
     }
     object GetAccelerationLimits() const {
-        vector<dReal> v;
+        std::vector<dReal> v;
         _pjoint->GetAccelerationLimits(v);
         return toPyArray(v);
     }
     object GetJerkLimits() const {
-        vector<dReal> v;
+        std::vector<dReal> v;
         _pjoint->GetJerkLimits(v);
         return toPyArray(v);
     }
     object GetHardVelocityLimits() const {
-        vector<dReal> v;
+        std::vector<dReal> v;
         _pjoint->GetHardVelocityLimits(v);
         return toPyArray(v);
     }
     object GetHardAccelerationLimits() const {
-        vector<dReal> v;
+        std::vector<dReal> v;
         _pjoint->GetHardAccelerationLimits(v);
         return toPyArray(v);
     }
     object GetHardJerkLimits() const {
-        vector<dReal> v;
+        std::vector<dReal> v;
         _pjoint->GetHardJerkLimits(v);
         return toPyArray(v);
     }
     object GetTorqueLimits() const {
-        vector<dReal> v;
+        std::vector<dReal> v;
         _pjoint->GetTorqueLimits(v);
         return toPyArray(v);
     }
@@ -1041,7 +1019,7 @@ public:
         return _pjoint->AddTorque(vtorques);
     }
 
-    object GetFloatParameters(object oname=object(), int index=-1) const {
+    object GetFloatParameters(object oname=py::none_(), int index=-1) const {
         return GetCustomParameters(_pjoint->GetFloatParameters(), oname, index);
     }
 
@@ -1050,7 +1028,7 @@ public:
         _pjoint->SetFloatParameters(key,ExtractArray<dReal>(oparameters));
     }
 
-    object GetIntParameters(object oname=object(), int index=-1) const {
+    object GetIntParameters(object oname=py::none_(), int index=-1) const {
         return GetCustomParameters(_pjoint->GetIntParameters(), oname, index);
     }
 
@@ -1059,7 +1037,7 @@ public:
         _pjoint->SetIntParameters(key,ExtractArray<int>(oparameters));
     }
 
-    object GetStringParameters(object oname=object()) const;
+    object GetStringParameters(object oname=py::none_()) const;
 
     void SetStringParameters(const std::string& key, object ovalue)
     {
@@ -1124,7 +1102,7 @@ public:
     object GetBody() const {
         KinBodyPtr pbody = _state.GetBody();
         if( !pbody ) {
-            return py::object();
+            return py::none_();
         }
         if( pbody->IsRobot() ) {
             return py::to_object(openravepy::toPyRobot(RaveInterfaceCast<RobotBase>(pbody),_pyenv));

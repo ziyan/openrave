@@ -13,7 +13,7 @@
 //
 // You should have received a copy of the GNU Lesser General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#include "bindings.h"
+#include <openravepy/bindings.h>
 
 namespace mydetail {
 template< typename T >
@@ -41,6 +41,7 @@ using py::type_id;
 using py::handle;
 using py::extract;
 using py::class_;
+using py::init;
 
 #ifndef USE_PYBIND11_PYTHON_BINDINGS
 using py::borrowed;
@@ -231,7 +232,9 @@ void init_python_bindings()
 #endif
 {
 
-#ifndef USE_PYBIND11_PYTHON_BINDINGS
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+    using namespace py::literals; // "..."_a
+#else
     numpy_multi_array_converter< boost::multi_array<float,1> >::register_to_and_from_python();
     numpy_multi_array_converter< boost::multi_array<float,2> >::register_to_and_from_python();
     numpy_multi_array_converter< boost::multi_array<float,3> >::register_to_and_from_python();
@@ -245,7 +248,10 @@ void init_python_bindings()
 #endif // USE_PYBIND11_PYTHON_BINDINGS
 
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
-    class_<PyVoidHandle/*, OPENRAVE_SHARED_PTR<PyVoidHandle>*/ >(m, "VoidHandle")
+    class_<PyVoidHandle, OPENRAVE_SHARED_PTR<PyVoidHandle>>(m, "VoidHandle")
+    .def(init<>())
+    // error: static assertion failed: Holder classes are only supported for custom types, so cannot do
+    // .def(init<OPENRAVE_SHARED_PTR<void>>(), "handle"_a)
 #else
     class_<PyVoidHandle, OPENRAVE_SHARED_PTR<PyVoidHandle> >("VoidHandle")
 #endif

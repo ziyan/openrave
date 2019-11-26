@@ -18,7 +18,7 @@
 #define OPENRAVEPY_INTERNAL_TRAJECTORYBASE_H
 
 #define NO_IMPORT_ARRAY
-#include "../openravepy_int.h"
+#include <openravepy/openravepy_int.h>
 
 namespace openravepy {
 using py::object;
@@ -83,7 +83,7 @@ public:
 
     PyTrajectoryBasePtr deserialize(const string& s);
 
-    object serialize(object ooptions=object());
+    object serialize(object ooptions=py::none_());
     bool Read(const string& s, object probot);
 
     object Write(object options);

@@ -15,9 +15,9 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define NO_IMPORT_ARRAY
-#include "openravepy_int.h"
-#include "openravepy_kinbody.h"
-#include "include/openravepy_environmentbase.h"
+#include <openravepy/openravepy_int.h>
+#include <openravepy/openravepy_kinbody.h>
+#include <openravepy/openravepy_environmentbase.h>
 
 namespace openravepy {
 
@@ -103,7 +103,7 @@ public:
         CHECK_POINTER(pylink);
         Vector linearvel, angularvel;
         if( !_pPhysicsEngine->GetLinkVelocity(openravepy::GetKinBodyLink(pylink),linearvel,angularvel) ) {
-            return py::object();
+            return py::none_();
         }
         return py::make_tuple(toPyVector3(linearvel),toPyVector3(angularvel));
     }
@@ -117,7 +117,7 @@ public:
         }
         std::vector<std::pair<Vector,Vector> > velocities;
         if( !_pPhysicsEngine->GetLinkVelocities(pbody,velocities) ) {
-            return py::object();
+            return py::none_();
         }
         npy_intp dims[] = { npy_intp(velocities.size()), 6};
         PyObject *pyvel = PyArray_SimpleNew(2,dims, sizeof(dReal)==8 ? PyArray_DOUBLE : PyArray_FLOAT);
@@ -156,7 +156,7 @@ public:
         CHECK_POINTER(pylink);
         Vector force, torque;
         if( !_pPhysicsEngine->GetLinkForceTorque(openravepy::GetKinBodyLink(pylink),force,torque) ) {
-            return py::object();
+            return py::none_();
         }
         return py::make_tuple(toPyVector3(force),toPyVector3(torque));
     }
@@ -166,7 +166,7 @@ public:
         CHECK_POINTER(pyjoint);
         Vector force, torque;
         if( !_pPhysicsEngine->GetJointForceTorque(openravepy::GetKinBodyJoint(pyjoint),force,torque) ) {
-            return py::object();
+            return py::none_();
         }
         return py::make_tuple(toPyVector3(force),toPyVector3(torque));
     }
@@ -211,6 +211,7 @@ void init_openravepy_physicsengine()
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
     using namespace py::literals; // "..."_a
     class_<PyPhysicsEngineBase, OPENRAVE_SHARED_PTR<PyPhysicsEngineBase>, PyInterfaceBase>(m, "PhysicsEngine", DOXY_CLASS(PhysicsEngineBase))
+    .def(init<PhysicsEngineBasePtr, PyEnvironmentBasePtr>(), "physicsengine"_a, "env"_a)
 #else
     class_<PyPhysicsEngineBase, OPENRAVE_SHARED_PTR<PyPhysicsEngineBase>, bases<PyInterfaceBase> >("PhysicsEngine", DOXY_CLASS(PhysicsEngineBase), no_init)
 #endif
