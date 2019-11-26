@@ -43,8 +43,9 @@ using py::docstring_options;
 using py::pickle_suite;
 using py::manage_new_object;
 using py::def;
-namespace numeric = py::numeric;
 #endif // USE_PYBIND11_PYTHON_BINDINGS
+
+namespace numeric = py::numeric;
 
 class PyIkParameterization
 {
@@ -367,8 +368,10 @@ object toPyIkParameterization(const std::string& serializeddata)
     return py::to_object(PyIkParameterizationPtr(new PyIkParameterization(serializeddata)));
 }
 
+class IkParameterization_pickle_suite
 #ifndef USE_PYBIND11_PYTHON_BINDINGS
-class IkParameterization_pickle_suite : public pickle_suite
+: public pickle_suite
+#endif
 {
 public:
     static py::tuple getinitargs(const PyIkParameterization &r)
@@ -379,7 +382,6 @@ public:
         return py::make_tuple(ss.str());
     }
 };
-#endif // USE_PYBIND11_PYTHON_BINDINGS
 
 #ifndef USE_PYBIND11_PYTHON_BINDINGS
 BOOST_PYTHON_FUNCTION_OVERLOADS(GetConfigurationSpecificationFromType_overloads, PyIkParameterization::GetConfigurationSpecificationFromType, 1, 4)
@@ -557,9 +559,7 @@ void init_openravepy_ikparameterization()
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
                                    .def(py::pickle(
                                     [](const PyIkParameterization& pyikparam) {
-                                        std::stringstream ss;
-                                        ss << pyikparam._param;
-                                        return py::make_tuple(ss.str());
+                                        return IkParameterization_pickle_suite::getinitargs(pyikparam);
                                     },
                                     [](py::tuple state) {
                                         // __setstate__

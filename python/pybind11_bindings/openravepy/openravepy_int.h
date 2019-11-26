@@ -42,13 +42,15 @@
 #include <boost/version.hpp>
 
 #define PY_ARRAY_UNIQUE_SYMBOL PyArrayHandle
+#ifndef USE_PYBIND11_PYTHON_BINDINGS
 #include <boost/python.hpp>
 #include <boost/python/exception_translator.hpp>
 #include <boost/python/docstring_options.hpp>
+#endif // USE_PYBIND11_PYTHON_BINDINGS
 #include <pyconfig.h>
 #include <numpy/arrayobject.h>
 
-#define OPENRAVE_BININGS_PYARRAY
+#define OPENRAVE_BINDINGS_PYARRAY
 #include <openravepy/bindings.h>
 #include <openravepy/docstrings.h>
 

@@ -25,7 +25,7 @@
 #include <boost/assert.hpp>
 #include <openrave/config.h>
 
-#define OPENRAVE_BININGS_PYARRAY
+#define OPENRAVE_BINDINGS_PYARRAY
 #include <openravepy/bindings.h>
 
 #include <ANN/ANN.h>
@@ -34,8 +34,6 @@
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
 namespace py = pybind11;
 #else
-// cannot get from bindings.h, so have to redeclare them here
-#define PY_ARGS(...) py::args(__VA_ARGS__),
 namespace py = boost::python;
 #endif // USE_PYBIND11_PYTHON_BINDINGS
 using py::object;
@@ -60,6 +58,7 @@ using py::pickle_suite;
 using py::manage_new_object;
 using py::def;
 #endif // USE_PYBIND11_PYTHON_BINDINGS
+
 namespace numeric = py::numeric;
 
 #ifndef USE_PYBIND11_PYTHON_BINDINGS

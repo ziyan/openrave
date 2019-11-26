@@ -45,6 +45,7 @@ using py::pickle_suite;
 using py::manage_new_object;
 using py::def;
 #endif // USE_PYBIND11_PYTHON_BINDINGS
+
 namespace numeric = py::numeric;
 
 template <typename T>
@@ -3181,8 +3182,10 @@ PyKinBodyPtr RaveCreateKinBody(PyEnvironmentBasePtr pyenv, const std::string& na
     return PyKinBodyPtr(new PyKinBody(p,pyenv));
 }
 
+class GeometryInfo_pickle_suite
 #ifndef USE_PYBIND11_PYTHON_BINDINGS
-class GeometryInfo_pickle_suite : public pickle_suite
+: public pickle_suite
+#endif
 {
 public:
     static py::tuple getstate(const PyGeometryInfo& r)
@@ -3203,7 +3206,7 @@ public:
         r._meshcollision = state[4];
         r._type = (GeometryType)(int)py::extract<int>(state[5]);
 
-        py::extract<std::string> pyoldfilenamerender(state[6]);
+        py::extract_<std::string> pyoldfilenamerender(state[6]);
         if( pyoldfilenamerender.check() ) {
             // old format
             r._filenamerender = state[6];
@@ -3231,7 +3234,10 @@ public:
     }
 };
 
-class LinkInfo_pickle_suite : public pickle_suite
+class LinkInfo_pickle_suite
+#ifndef USE_PYBIND11_PYTHON_BINDINGS
+: public pickle_suite
+#endif
 {
 public:
     static py::tuple getstate(const PyLinkInfo& r)
@@ -3257,7 +3263,10 @@ public:
     }
 };
 
-class ElectricMotorActuatorInfo_pickle_suite : public pickle_suite
+class ElectricMotorActuatorInfo_pickle_suite
+#ifndef USE_PYBIND11_PYTHON_BINDINGS
+: public pickle_suite
+#endif
 {
 public:
     static py::tuple getstate(const PyElectricMotorActuatorInfo& r)
@@ -3285,7 +3294,10 @@ public:
     }
 };
 
-class JointInfo_pickle_suite : public pickle_suite
+class JointInfo_pickle_suite
+#ifndef USE_PYBIND11_PYTHON_BINDINGS
+: public pickle_suite
+#endif
 {
 public:
     static py::tuple getstate(const PyJointInfo& r)
@@ -3310,7 +3322,11 @@ public:
         r._vlowerlimit = state[1][7];
         r._vupperlimit = state[1][8];
         r._trajfollow = state[2][0];
-        int num2 = len(state[2]);
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+        const int num2 = len(extract<py::object>(state[2]));
+#else
+        const int num2 = len(state[2]);
+#endif
         r._vmimic = py::list(state[2][1]);
         r._mapFloatParameters = py::dict(state[2][2]);
         r._mapIntParameters = py::dict(state[2][3]);
@@ -3337,7 +3353,10 @@ public:
     }
 };
 
-class GrabbedInfo_pickle_suite : public pickle_suite
+class GrabbedInfo_pickle_suite
+#ifndef USE_PYBIND11_PYTHON_BINDINGS
+: public pickle_suite
+#endif
 {
 public:
     static py::tuple getstate(const PyKinBody::PyGrabbedInfo& r)
@@ -3345,13 +3364,23 @@ public:
         return py::make_tuple(r._grabbedname, r._robotlinkname, r._trelative, r._setRobotLinksToIgnore);
     }
     static void setstate(PyKinBody::PyGrabbedInfo& r, py::tuple state) {
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+        r._grabbedname = extract<std::string>(state[0]);
+        r._robotlinkname = extract<std::string>(state[1]);
+#else
         r._grabbedname = state[0];
         r._robotlinkname = state[1];
+#endif
         r._trelative = state[2];
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+        r._setRobotLinksToIgnore = extract<std::vector<int>>(state[3]);
+#else
         r._setRobotLinksToIgnore = state[3];
+#endif
     }
 };
 
+#ifndef USE_PYBIND11_PYTHON_BINDINGS
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(IsMimic_overloads, IsMimic, 0, 1)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(GetMimicEquation_overloads, GetMimicEquation, 0, 3)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(GetMimicDOFIndices_overloads, GetMimicDOFIndices, 0, 1)
@@ -3474,46 +3503,17 @@ void init_openravepy_kinbody()
 #ifdef USE_PYBIND11_PYTHON_BINDINGS
                                        .def(py::pickle(
                                         [](const PyElectricMotorActuatorInfo& pyinfo) {
-                                            return py::make_tuple(pyinfo.gear_ratio,
-                                                pyinfo.assigned_power_rating,
-                                                pyinfo.max_speed,
-                                                pyinfo.no_load_speed,
-                                                py::make_tuple(pyinfo.stall_torque, pyinfo.max_instantaneous_torque),
-                                                py::make_tuple(pyinfo.nominal_speed_torque_points, pyinfo.max_speed_torque_points),
-                                                pyinfo.nominal_torque,
-                                                pyinfo.rotor_inertia,
-                                                pyinfo.torque_constant,
-                                                pyinfo.nominal_voltage,
-                                                pyinfo.speed_constant,
-                                                pyinfo.starting_current,
-                                                pyinfo.terminal_resistance,
-                                                py::make_tuple(pyinfo.coloumb_friction, pyinfo.viscous_friction));
+                                            return ElectricMotorActuatorInfo_pickle_suite::getstate(pyinfo);
                                         },
                                         [](py::tuple state) {
                                             // __setstate__
                                             if(state.size() != 14) {
-                                                throw std::runtime_error("Invalid state");
+                                                RAVELOG_WARN("Invalid state!");
                                             }
                                             // TGN: should I convert this to primitive data types?
                                             // ... the same as I did for PyKinBody::PyGrabbedInfo
                                             PyElectricMotorActuatorInfo pyinfo;
-                                            pyinfo.gear_ratio = py::extract<dReal>(state[0]);
-                                            pyinfo.assigned_power_rating = py::extract<dReal>(state[1]);
-                                            pyinfo.max_speed = py::extract<dReal>(state[2]);
-                                            pyinfo.no_load_speed = py::extract<dReal>(state[3]);
-                                            pyinfo.stall_torque = py::extract<dReal>(state[4][0]);
-                                            pyinfo.max_instantaneous_torque = py::extract<dReal>(state[4][1]);
-                                            pyinfo.nominal_speed_torque_points = py::list(state[5][0]);
-                                            pyinfo.max_speed_torque_points = py::list(state[5][1]);
-                                            pyinfo.nominal_torque = py::extract<dReal>(state[6]);
-                                            pyinfo.rotor_inertia = py::extract<dReal>(state[7]);
-                                            pyinfo.torque_constant = py::extract<dReal>(state[8]);
-                                            pyinfo.nominal_voltage = py::extract<dReal>(state[9]);
-                                            pyinfo.speed_constant = py::extract<dReal>(state[10]);
-                                            pyinfo.starting_current = py::extract<dReal>(state[11]);
-                                            pyinfo.terminal_resistance = py::extract<dReal>(state[12]);
-                                            pyinfo.coloumb_friction = py::extract<dReal>(state[13][0]);
-                                            pyinfo.viscous_friction = py::extract<dReal>(state[13][1]);
+                                            ElectricMotorActuatorInfo_pickle_suite::setstate(pyinfo, state);
                                             return pyinfo;
                                         }
                                         ))  
@@ -3580,7 +3580,21 @@ void init_openravepy_kinbody()
 #else
                           .def("SerializeJSON", &PyGeometryInfo::SerializeJSON,SerializeJSON_overloads(PY_ARGS("unitScale", "options") DOXY_FN(GeometryInfo,SerializeJSON)))
 #endif
-#ifndef USE_PYBIND11_PYTHON_BINDINGS
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+                          .def(py::pickle(
+                            [](const PyGeometryInfo &pygeom) {
+                                // __getstate__
+                                return GeometryInfo_pickle_suite::getstate(pygeom);
+                            },
+                            [](py::tuple state) {
+                                // __setstate__
+                                /* Create a new C++ instance */
+                                PyGeometryInfo pygeom;
+                                GeometryInfo_pickle_suite::setstate(pygeom, state);
+                                return pygeom;
+                            }
+                            ))
+#else
                           .def_pickle(GeometryInfo_pickle_suite())
 #endif
     ;
@@ -3612,7 +3626,21 @@ void init_openravepy_kinbody()
                       .def_readwrite("_vForcedAdjacentLinks",&PyLinkInfo::_vForcedAdjacentLinks)
                       .def_readwrite("_bStatic",&PyLinkInfo::_bStatic)
                       .def_readwrite("_bIsEnabled",&PyLinkInfo::_bIsEnabled)
-#ifndef USE_PYBIND11_PYTHON_BINDINGS
+#ifdef USE_PYBIND11_PYTHON_BINDINGS
+                      .def(py::pickle(
+                        [](const PyLinkInfo &pyinfo) {
+                            // __getstate__
+                            return LinkInfo_pickle_suite::getstate(pyinfo);
+                        },
+                        [](py::tuple state) {
+                            // __setstate__
+                            /* Create a new C++ instance */
+                            PyLinkInfo pyinfo;
+                            LinkInfo_pickle_suite::setstate(pyinfo, state);
+                            return pyinfo;
+                        }
+                        ))
+#else
                       .def_pickle(LinkInfo_pickle_suite())
 #endif
     ;
@@ -3654,62 +3682,15 @@ void init_openravepy_kinbody()
                        .def(py::pickle(
                         [](const PyJointInfo &pyinfo) {
                             // __getstate__
-                            /* Return a tuple that fully encodes the state of the object */
-                            return py::make_tuple(
-                                py::make_tuple((int)pyinfo._type, pyinfo._name, pyinfo._linkname0, pyinfo._linkname1, pyinfo._vanchor, pyinfo._vaxes, pyinfo._vcurrentvalues),
-                                py::make_tuple(pyinfo._vresolution, pyinfo._vmaxvel, pyinfo._vhardmaxvel, pyinfo._vmaxaccel, pyinfo._vmaxtorque, pyinfo._vweights, pyinfo._voffsets, pyinfo._vlowerlimit, pyinfo._vupperlimit),
-                                py::make_tuple(pyinfo._trajfollow, pyinfo._vmimic, pyinfo._mapFloatParameters, pyinfo._mapIntParameters, pyinfo._bIsCircular, pyinfo._bIsActive, pyinfo._mapStringParameters, pyinfo._infoElectricMotor, pyinfo._vmaxinertia, pyinfo._vmaxjerk, pyinfo._vhardmaxaccel, pyinfo._vhardmaxjerk)
-                            );
+                            return JointInfo_pickle_suite::getstate(pyinfo);
                         },
                         [](py::tuple state) {
                             // __setstate__
                             if (state.size() != 3) {
-                                throw std::runtime_error("Invalid state!");
+                                RAVELOG_WARN("Invalid state!");
                             }
-                            /* Create a new C++ instance */
                             PyJointInfo pyinfo;
-                            /* Assign any additional state */
-                            pyinfo._type = (KinBody::JointType)(int)py::extract<int>(state[0][0]);
-                            pyinfo._name = state[0][1];
-                            pyinfo._linkname0 = state[0][2];
-                            pyinfo._linkname1 = state[0][3];
-                            pyinfo._vanchor = state[0][4];
-                            pyinfo._vaxes = state[0][5];
-                            pyinfo._vcurrentvalues = state[0][6];
-                            pyinfo._vresolution = state[1][0];
-                            pyinfo._vmaxvel = state[1][1];
-                            pyinfo._vhardmaxvel = state[1][2];
-                            pyinfo._vmaxaccel = state[1][3];
-                            pyinfo._vmaxtorque = state[1][4];
-                            pyinfo._vweights = state[1][5];
-                            pyinfo._voffsets = state[1][6];
-                            pyinfo._vlowerlimit = state[1][7];
-                            pyinfo._vupperlimit = state[1][8];
-                            pyinfo._trajfollow = state[2][0];
-                            int num2 = len(extract<py::object>(state[2])); // same as state[2].cast<py::object>()
-                            pyinfo._vmimic = py::list(state[2][1]);
-                            pyinfo._mapFloatParameters = py::dict(state[2][2]);
-                            pyinfo._mapIntParameters = py::dict(state[2][3]);
-                            pyinfo._bIsCircular = state[2][4];
-                            pyinfo._bIsActive = py::extract<bool>(state[2][5]);
-                            if( num2 > 6 ) {
-                                pyinfo._mapStringParameters = py::dict(state[2][6]);
-                                if( num2 > 7 ) {
-                                    pyinfo._infoElectricMotor = py::extract<PyElectricMotorActuatorInfoPtr>(state[2][7]);
-                                    if( num2 > 8 ) {
-                                        pyinfo._vmaxinertia = state[2][8];
-                                        if( num2 > 9 ) {
-                                            pyinfo._vmaxjerk = state[2][9];
-                                            if( num2 > 10 ) {
-                                                pyinfo._vhardmaxaccel = state[2][10];
-                                                if( num2 > 11 ) {
-                                                    pyinfo._vhardmaxjerk = state[2][11];
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                            JointInfo_pickle_suite::setstate(pyinfo, state);
                             return pyinfo;
                         }
                         ))
@@ -3735,26 +3716,18 @@ void init_openravepy_kinbody()
                          // https://pybind11.readthedocs.io/en/stable/advanced/classes.html#pickling-support
                          .def(py::pickle(
                             // __getstate__
-                            [](const PyKinBody::PyGrabbedInfo &r) {
-                                _RAVE_DISPLAY(std::cout << "__getstate__ of PyKinBody::PyGrabbedInfo";);
-                                /* Return a tuple that fully encodes the state of the object */
-                                return py::make_tuple(r._grabbedname, r._robotlinkname, r._trelative, r._setRobotLinksToIgnore);
+                            [](const PyKinBody::PyGrabbedInfo &pyinfo) {
+                                return GrabbedInfo_pickle_suite::getstate(pyinfo);
                             },
                             // __setstate__
                             [](py::tuple state) {
-                                _RAVE_DISPLAY(std::cout << "__setstate__ of PyKinBody::PyGrabbedInfo";);
                                 if (state.size() != 4) {
-                                    throw std::runtime_error("Invalid state!");
+                                    RAVELOG_WARN("Invalid state!");
                                 }
                                 /* Create a new C++ instance */
-                                PyKinBody::PyGrabbedInfo r;
-                                /* Assign any additional state */
-                                /* Similar to GrabbedInfo_pickle_suite above */
-                                r._grabbedname = extract<std::string>(state[0]);
-                                r._robotlinkname = extract<std::string>(state[1]);
-                                r._trelative = state[2];
-                                r._setRobotLinksToIgnore = extract<std::vector<int>>(state[3]);
-                                return r;
+                                PyKinBody::PyGrabbedInfo pyinfo;
+                                GrabbedInfo_pickle_suite::setstate(pyinfo, state);
+                                return pyinfo;
                             }
                          ))
 #else
